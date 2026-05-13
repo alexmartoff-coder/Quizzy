@@ -1,0 +1,72 @@
+[
+    {
+        "id": 1,
+        "question": "Как называется первый iPhone?",
+        "options": ["iPhone 1", "iPhone 2G", "iPhone 3G", "iPhone Original"],
+        "correct_index": 1,
+        "explanation": "Первый iPhone часто называют iPhone 2G, так как он поддерживал только сети 2-го поколения."
+    },
+    {
+        "id": 2,
+        "question": "В каком году Стив Джобс представил первый iPhone?",
+        "options": ["2005", "2006", "2007", "2008"],
+        "correct_index": 2,
+        "explanation": "Первый iPhone был представлен 9 января 2007 года на конференции Macworld."
+    },
+    {
+        "id": 3,
+        "question": "Какая диагональ экрана была у первого iPhone?",
+        "options": ["3.5 дюйма", "4.0 дюйма", "4.7 дюйма", "5.0 дюймов"],
+        "correct_index": 0,
+        "explanation": "Экран первого iPhone имел диагональ 3.5 дюйма."
+    },
+    {
+        "id": 4,
+        "question": "Какая операционная система стояла на первом iPhone?",
+        "options": ["iOS 1", "iPhone OS", "macOS Mobile", "Darwin"],
+        "correct_index": 1,
+        "explanation": "Изначально она называлась iPhone OS, название iOS появилось позже."
+    },
+    {
+        "id": 5,
+        "question": "Был ли App Store в первой версии прошивки iPhone?",
+        "options": ["Да", "Нет", "Только для Apple", "В бета-версии"],
+        "correct_index": 1,
+        "explanation": "В первой версии не было App Store, он появился только в 2008 году с выходом iPhone 3G."
+    },
+    {
+        "id": 6,
+        "question": "Кто является нынешним CEO Apple?",
+        "options": ["Тим Кук", "Джони Айв", "Стив Возняк", "Крейг Федериги"],
+        "correct_index": 0,
+        "explanation": "Тим Кук занял пост CEO Apple в августе 2011 года."
+    },
+    {
+        "id": 7,
+        "question": "Как назывался голосовой помощник в iPhone 4S?",
+        "options": ["Alexa", "Siri", "Cortana", "Alice"],
+        "correct_index": 1,
+        "explanation": "Siri была представлена как одна из ключевых функций iPhone 4S в 2011 году."
+    },
+    {
+        "id": 8,
+        "question": "Какой iPhone первым получил Face ID?",
+        "options": ["iPhone 7", "iPhone 8", "iPhone X", "iPhone XR"],
+        "correct_index": 2,
+        "explanation": "iPhone X, вышедший в 2017 году, стал первым смартфоном Apple с Face ID."
+    },
+    {
+        "id": 9,
+        "question": "Какой материал использовался в корпусе iPhone 4?",
+        "options": ["Пластик", "Алюминий", "Стекло и сталь", "Титан"],
+        "correct_index": 2,
+        "explanation": "iPhone 4 имел рамку из нержавеющей стали и стеклянные переднюю и заднюю панели."
+    },
+    {
+        "id": 10,
+        "question": "Какой разъем используется в iPhone 15?",
+        "options": ["Lightning", "Micro-USB", "USB-C", "MagSafe"],
+        "correct_index": 2,
+        "explanation": "Начиная с линейки iPhone 15, Apple перешла на стандарт USB-C."
+    }
+]
