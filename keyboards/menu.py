@@ -1,10 +1,8 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from database.db import is_collection_closed
-from datetime import datetime
-from config import DEADLINE_DATE
 
 async def get_main_menu_keyboard():
-    closed = await is_collection_closed() or datetime.now() > DEADLINE_DATE
+    closed = await is_collection_closed()
 
     buttons = []
     if not closed:

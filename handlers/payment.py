@@ -1,6 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice, CallbackQuery
-from config import QUIZ_PRICE, PAYMENT_PROVIDER_TOKEN, TICKET_LIMIT, DEADLINE_DATE, BOT_TOKEN, CHANNEL_ID
+from config import QUIZ_PRICE, PAYMENT_PROVIDER_TOKEN, TICKET_LIMIT, BOT_TOKEN, CHANNEL_ID
 from database.db import increment_ticket_id, add_ticket, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection
 from keyboards.menu import get_payment_keyboard, get_start_quiz_keyboard
 from datetime import datetime
@@ -11,7 +11,7 @@ router = Router()
 
 @router.message(F.text == "🎁 Играть в Квиз за iPhone 17")
 async def cmd_play(message: Message):
-    if await is_collection_closed() or datetime.now() > DEADLINE_DATE:
+    if await is_collection_closed():
         await message.answer(
             "🎉 Сбор билетов завершён досрочно!\n\n"
             "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
@@ -32,7 +32,7 @@ async def cmd_play(message: Message):
 
 @router.callback_query(F.data == "pay_99")
 async def process_pay(callback: CallbackQuery):
-    if await is_collection_closed() or datetime.now() > DEADLINE_DATE:
+    if await is_collection_closed():
         await callback.answer("Сбор билетов завершен!", show_alert=True)
         return
 

@@ -3,8 +3,6 @@ from aiogram.types import Message
 from aiogram.filters import CommandStart
 from database.db import add_user, get_user_tickets, get_leaderboard, is_collection_closed
 from keyboards.menu import get_main_menu_keyboard
-from datetime import datetime
-from config import DEADLINE_DATE
 
 router = Router()
 
@@ -29,7 +27,7 @@ async def cmd_rules(message: Message):
         "   - 10 правильных ответов: +3 билета\n"
         "   - 9 правильных ответов: +2 билета\n"
         "   - 8 правильных ответов: +1 билет\n"
-        "5. Сбор билетов завершается при достижении 2500 билетов или 10 апреля 2026 года.\n"
+        "5. Сбор билетов завершается при достижении 2500 билетов.\n"
         "6. Победитель будет выбран с помощью random.org в прямом эфире @mozgo_boy.",
         parse_mode="Markdown"
     )

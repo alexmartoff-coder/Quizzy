@@ -24,36 +24,48 @@ async def send_question(message: Message, state: FSMContext, question_index: int
         await finish_quiz(message, state)
         return
 
+    # Cancel previous timeout if exists
+    data = await state.get_data()
+    prev_task = data.get("timeout_task")
+    if prev_task and not prev_task.done():
+        prev_task.cancel()
+
     question = QUESTIONS[question_index]
     text = f"❓ **Вопрос {question_index + 1}/10**\n\n{question['question']}\n\n⏱ У тебя 30 секунд!"
 
     msg = await message.answer(text, reply_markup=get_question_keyboard(question['id'], question['options']), parse_mode="Markdown")
 
-    # Store start time and message id to handle timeout
-    await state.update_data(current_question_index=question_index, question_msg_id=msg.message_id, start_time=time.time())
-    await state.set_state(QuizStates.answering)
-
     # Start timeout task
     timeout_task = asyncio.create_task(handle_timeout(message, state, question_index, msg.message_id))
-    await state.update_data(timeout_task=id(timeout_task)) # We can't easily store the task itself in state if it needs to be serialized, but for simple FSM it might work if not using persistent storage.
-    # Actually, let's just rely on the state check in handle_timeout for now as it's safer for different FSM storages.
+
+    # Store start time, message id and task to handle timeout/cleanup
+    await state.update_data(
+        current_question_index=question_index,
+        question_msg_id=msg.message_id,
+        start_time=time.time(),
+        timeout_task=timeout_task
+    )
+    await state.set_state(QuizStates.answering)
 
 async def handle_timeout(message: Message, state: FSMContext, question_index: int, msg_id: int):
-    await asyncio.sleep(30)
-    data = await state.get_data()
+    try:
+        await asyncio.sleep(30)
+        data = await state.get_data()
 
-    # Check if we are still on the same question and haven't answered
-    if (await state.get_state() == QuizStates.answering and
-        data.get("current_question_index") == question_index and
-        data.get("question_msg_id") == msg_id):
+        # Check if we are still on the same question and haven't answered
+        if (await state.get_state() == QuizStates.answering and
+            data.get("current_question_index") == question_index and
+            data.get("question_msg_id") == msg_id):
 
-        # Timeout occurred
-        question = QUESTIONS[question_index]
-        await message.answer(f"⏰ Время вышло!\n\n❌ Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}")
+            # Timeout occurred
+            question = QUESTIONS[question_index]
+            await message.answer(f"⏰ Время вышло!\n\n❌ Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}")
 
-        # Move to next question
-        await update_quiz_question(message.from_user.id, question_index + 1)
-        await send_question(message, state, question_index + 1)
+            # Move to next question
+            await update_quiz_question(message.from_user.id, question_index + 1)
+            await send_question(message, state, question_index + 1)
+    except asyncio.CancelledError:
+        pass # Task cancelled because user answered
 
 @router.callback_query(F.data == "start_quiz")
 async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
@@ -68,6 +80,12 @@ async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(QuizStates.answering, F.data.startswith("answer_"))
 async def process_answer(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
+
+    # Cancel timeout task as soon as answer is received
+    timeout_task = data.get("timeout_task")
+    if timeout_task and not timeout_task.done():
+        timeout_task.cancel()
+
     parts = callback.data.split("_")
     question_id = int(parts[1])
     answer_index = int(parts[2])
