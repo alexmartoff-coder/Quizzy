@@ -19,9 +19,9 @@ def get_question_keyboard(question_id, options):
         keyboard.append([InlineKeyboardButton(text=option, callback_data=f"answer_{question_id}_{i}")])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-async def send_question(message: Message, state: FSMContext, question_index: int):
+async def send_question(message: Message, state: FSMContext, question_index: int, user_id: int):
     if question_index >= len(QUESTIONS):
-        await finish_quiz(message, state)
+        await finish_quiz(message, state, user_id)
         return
 
     # Cancel previous timeout if exists
@@ -33,10 +33,10 @@ async def send_question(message: Message, state: FSMContext, question_index: int
     question = QUESTIONS[question_index]
     text = f"❓ **Вопрос {question_index + 1}/10**\n\n{question['question']}\n\n⏱ У тебя 30 секунд!"
 
-    msg = await message.answer(text, reply_markup=get_question_keyboard(question['id'], question['options']), parse_mode="Markdown")
+    msg = await message.bot.send_message(chat_id=user_id, text=text, reply_markup=get_question_keyboard(question['id'], question['options']), parse_mode="Markdown")
 
     # Start timeout task
-    timeout_task = asyncio.create_task(handle_timeout(message, state, question_index, msg.message_id))
+    timeout_task = asyncio.create_task(handle_timeout(message, state, question_index, msg.message_id, user_id))
 
     # Store start time, message id and task to handle timeout/cleanup
     await state.update_data(
@@ -47,7 +47,7 @@ async def send_question(message: Message, state: FSMContext, question_index: int
     )
     await state.set_state(QuizStates.answering)
 
-async def handle_timeout(message: Message, state: FSMContext, question_index: int, msg_id: int):
+async def handle_timeout(message: Message, state: FSMContext, question_index: int, msg_id: int, user_id: int):
     try:
         await asyncio.sleep(30)
         data = await state.get_data()
@@ -59,26 +59,28 @@ async def handle_timeout(message: Message, state: FSMContext, question_index: in
 
             # Timeout occurred
             question = QUESTIONS[question_index]
-            await message.answer(f"⏰ Время вышло!\n\n❌ Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}")
+            await message.bot.send_message(chat_id=user_id, text=f"⏰ Время вышло!\n\n❌ Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}")
 
             # Move to next question
-            await update_quiz_question(message.from_user.id, question_index + 1)
-            await send_question(message, state, question_index + 1)
+            await update_quiz_question(user_id, question_index + 1)
+            await send_question(message, state, question_index + 1, user_id)
     except asyncio.CancelledError:
         pass # Task cancelled because user answered
 
 @router.callback_query(F.data == "start_quiz")
 async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
-    session = await get_quiz_session(callback.from_user.id)
+    user_id = callback.from_user.id
+    session = await get_quiz_session(user_id)
     if not session or not session[2]: # session[2] is is_active
         await callback.answer("У тебя нет активной сессии квиза. Оплати участие!", show_alert=True)
         return
 
     await callback.answer()
-    await send_question(callback.message, state, 0)
+    await send_question(callback.message, state, 0, user_id)
 
 @router.callback_query(QuizStates.answering, F.data.startswith("answer_"))
 async def process_answer(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
     data = await state.get_data()
 
     # Cancel timeout task as soon as answer is received
@@ -106,9 +108,9 @@ async def process_answer(callback: CallbackQuery, state: FSMContext):
 
     is_correct = answer_index == question['correct_index']
     if is_correct:
-        session = await get_quiz_session(callback.from_user.id)
+        session = await get_quiz_session(user_id)
         new_score = session[0] + 1
-        await update_quiz_score(callback.from_user.id, new_score)
+        await update_quiz_score(user_id, new_score)
         response = f"✅ Верно!\n\n{question['explanation']}"
     else:
         response = f"❌ Неверно. Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}"
@@ -118,12 +120,10 @@ async def process_answer(callback: CallbackQuery, state: FSMContext):
 
     # Move to next question
     next_index = question_index + 1
-    await update_quiz_question(callback.from_user.id, next_index)
-    await send_question(callback.message, state, next_index)
+    await update_quiz_question(user_id, next_index)
+    await send_question(callback.message, state, next_index, user_id)
 
-async def finish_quiz(message: Message, state: FSMContext):
-    user_id = message.chat.id
-
+async def finish_quiz(message: Message, state: FSMContext, user_id: int):
     session = await get_quiz_session(user_id)
     score = session[0]
 
@@ -151,7 +151,7 @@ async def finish_quiz(message: Message, state: FSMContext):
     else:
         result_text += "К сожалению, в этот раз без бонусов. Попробуй еще раз!"
 
-    await message.answer(result_text, reply_markup=await get_main_menu_keyboard())
+    await message.bot.send_message(chat_id=user_id, text=result_text, reply_markup=await get_main_menu_keyboard())
 
     # Check limit and announce
     total_tickets = await get_total_tickets_count()
