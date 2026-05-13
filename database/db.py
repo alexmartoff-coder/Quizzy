@@ -53,13 +53,14 @@ async def get_next_ticket_id():
 
 async def increment_ticket_id(count=1):
     async with aiosqlite.connect(DB_PATH) as db:
+        # Atomic update
+        await db.execute("UPDATE settings SET value = value + ? WHERE key = 'next_ticket_id'", (count,))
+        await db.commit()
+        # Get the start ID (previous value)
         async with db.execute("SELECT value FROM settings WHERE key = 'next_ticket_id'") as cursor:
             row = await cursor.fetchone()
-            current_id = int(row[0])
-            new_id = current_id + count
-            await db.execute("UPDATE settings SET value = ? WHERE key = 'next_ticket_id'", (str(new_id),))
-            await db.commit()
-            return current_id # Returns the starting ID for the tickets just issued
+            new_val = int(row[0])
+            return new_val - count
 
 async def add_user(user_id, username, full_name):
     async with aiosqlite.connect(DB_PATH) as db:

@@ -7,6 +7,7 @@ from database.db import get_quiz_session, update_quiz_score, update_quiz_questio
 from keyboards.menu import get_main_menu_keyboard
 import asyncio
 import time
+import random
 from config import TICKET_LIMIT, BOT_TOKEN, CHANNEL_ID
 from aiogram import Bot
 import logging
@@ -20,22 +21,27 @@ def get_question_keyboard(question_id, options):
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 async def send_question(message: Message, state: FSMContext, question_index: int, user_id: int):
-    if question_index >= len(QUESTIONS):
+    data = await state.get_data()
+    # FIXED: рандомизация вопросов - получение перемешанного списка из стейта
+    shuffled_questions = data.get("shuffled_questions")
+
+    if question_index >= len(shuffled_questions):
         await finish_quiz(message, state, user_id)
         return
 
     # Cancel previous timeout if exists
-    data = await state.get_data()
+    # FIXED: таймаут - отмена задачи
     prev_task = data.get("timeout_task")
     if prev_task and not prev_task.done():
         prev_task.cancel()
 
-    question = QUESTIONS[question_index]
+    question = shuffled_questions[question_index]
     text = f"❓ **Вопрос {question_index + 1}/10**\n\n{question['question']}\n\n⏱ У тебя 30 секунд!"
 
     msg = await message.bot.send_message(chat_id=user_id, text=text, reply_markup=get_question_keyboard(question['id'], question['options']), parse_mode="Markdown")
 
     # Start timeout task
+    # FIXED: таймаут - запуск новой задачи
     timeout_task = asyncio.create_task(handle_timeout(message, state, question_index, msg.message_id, user_id))
 
     # Store start time, message id and task to handle timeout/cleanup
@@ -48,6 +54,7 @@ async def send_question(message: Message, state: FSMContext, question_index: int
     await state.set_state(QuizStates.answering)
 
 async def handle_timeout(message: Message, state: FSMContext, question_index: int, msg_id: int, user_id: int):
+    # FIXED: таймаут - логика ожидания и автоматического перехода
     try:
         await asyncio.sleep(30)
         data = await state.get_data()
@@ -58,8 +65,12 @@ async def handle_timeout(message: Message, state: FSMContext, question_index: in
             data.get("question_msg_id") == msg_id):
 
             # Timeout occurred
-            question = QUESTIONS[question_index]
-            await message.bot.send_message(chat_id=user_id, text=f"⏰ Время вышло!\n\n❌ Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}")
+            shuffled_questions = data.get("shuffled_questions")
+            question = shuffled_questions[question_index]
+            await message.bot.send_message(
+                chat_id=user_id,
+                text=f"⏰ Время вышло!\n\n❌ Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}"
+            )
 
             # Move to next question
             await update_quiz_question(user_id, question_index + 1)
@@ -76,6 +87,12 @@ async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
         return
 
     await callback.answer()
+
+    # FIXED: рандомизация вопросов - перемешивание при старте
+    shuffled_questions = QUESTIONS.copy()
+    random.shuffle(shuffled_questions)
+    await state.update_data(shuffled_questions=shuffled_questions)
+
     await send_question(callback.message, state, 0, user_id)
 
 @router.callback_query(QuizStates.answering, F.data.startswith("answer_"))
@@ -84,6 +101,7 @@ async def process_answer(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
     # Cancel timeout task as soon as answer is received
+    # FIXED: таймаут - отмена при ответе
     timeout_task = data.get("timeout_task")
     if timeout_task and not timeout_task.done():
         timeout_task.cancel()
@@ -93,13 +111,14 @@ async def process_answer(callback: CallbackQuery, state: FSMContext):
     answer_index = int(parts[2])
 
     question_index = data.get("current_question_index")
-    question = QUESTIONS[question_index]
+    shuffled_questions = data.get("shuffled_questions")
+    question = shuffled_questions[question_index]
 
     if question['id'] != question_id:
         await callback.answer()
         return
 
-    # Check time
+    # Check time (with small grace period)
     if time.time() - data.get("start_time", 0) > 31:
         await callback.answer("Время вышло!", show_alert=True)
         return
