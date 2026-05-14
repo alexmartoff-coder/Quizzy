@@ -2,7 +2,7 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from handlers.quiz_states import QuizStates
-from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, increment_ticket_id, add_ticket, get_total_tickets_count, close_collection, is_collection_closed
+from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, issue_random_tickets, get_total_tickets_count, close_collection, is_collection_closed
 from keyboards.menu import get_main_menu_keyboard
 from utils.generator import generate_questions
 import asyncio
@@ -207,14 +207,15 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     msg = f"🏁 <b>Квиз завершён!</b>\n\nТвой результат: <b>{score}/10</b>\n\n"
 
     if bonus > 0:
-        start_id = await increment_ticket_id(bonus)
-        for i in range(bonus):
-            await add_ticket(user_id, start_id + i, "bonus")
-
-        if bonus == 1:
-            msg += f"🎉 Ты получаешь <b>{bonus} бонусный билет</b> (№{start_id:04d})!"
+        issued = await issue_random_tickets(user_id, bonus, "bonus")
+        if issued:
+            if len(issued) == 1:
+                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусный билет</b> (№{issued[0]:04d})!"
+            else:
+                tickets_str = ", ".join([f"№{t:04d}" for t in issued])
+                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусных билета</b> ({tickets_str})!"
         else:
-            msg += f"🎉 Ты получаешь <b>{bonus} бонусных билета</b> (№{start_id:04d} — №{start_id + bonus - 1:04d})!"
+            msg += "Бонусные билеты закончились!"
     else:
         msg += "Бонусных билетов в этот раз нет. Попробуй еще раз!"
 

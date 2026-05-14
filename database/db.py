@@ -40,10 +40,48 @@ async def init_db():
             )
         """)
 
-        # Initialize next_ticket_id if not exists
-        await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('next_ticket_id', '1')")
+        # Таблица доступных номеров для рандомной выдачи
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS available_tickets (
+                ticket_number INTEGER PRIMARY KEY
+            )
+        """)
+
+        # Инициализация настроек
         await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('is_closed', '0')")
+
+        # Пополнение пула билетов, если он пуст и мы еще не начали выдачу
+        async with db.execute("SELECT COUNT(*) FROM tickets") as cursor:
+            issued_count = (await cursor.fetchone())[0]
+
+        async with db.execute("SELECT COUNT(*) FROM available_tickets") as cursor:
+            available_count = (await cursor.fetchone())[0]
+
+        if issued_count == 0 and available_count == 0:
+            # Заполняем пул номерами 1-2500
+            for i in range(1, 2501):
+                await db.execute("INSERT INTO available_tickets (ticket_number) VALUES (?)", (i,))
+
         await db.commit()
+
+async def issue_random_tickets(user_id, count, ticket_type):
+    """Выдает указанное количество случайных билетов пользователю."""
+    issued_tickets = []
+    async with aiosqlite.connect(DB_PATH) as db:
+        for _ in range(count):
+            # Выбираем случайный билет из доступных
+            async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY RANDOM() LIMIT 1") as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    ticket_num = row[0]
+                    # Удаляем из доступных
+                    await db.execute("DELETE FROM available_tickets WHERE ticket_number = ?", (ticket_num,))
+                    # Добавляем пользователю
+                    await db.execute("INSERT INTO tickets (user_id, ticket_number, type) VALUES (?, ?, ?)",
+                                     (user_id, ticket_num, ticket_type))
+                    issued_tickets.append(ticket_num)
+        await db.commit()
+    return issued_tickets
 
 async def get_next_ticket_id():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -51,16 +89,6 @@ async def get_next_ticket_id():
             row = await cursor.fetchone()
             return int(row[0])
 
-async def increment_ticket_id(count=1):
-    async with aiosqlite.connect(DB_PATH) as db:
-        # Atomic update
-        await db.execute("UPDATE settings SET value = value + ? WHERE key = 'next_ticket_id'", (count,))
-        await db.commit()
-        # Get the start ID (previous value)
-        async with db.execute("SELECT value FROM settings WHERE key = 'next_ticket_id'") as cursor:
-            row = await cursor.fetchone()
-            new_val = int(row[0])
-            return new_val - count
 
 async def add_user(user_id, username, full_name):
     async with aiosqlite.connect(DB_PATH) as db:
