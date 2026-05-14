@@ -47,7 +47,8 @@ async def cmd_my_tickets(message: Message):
     if not tickets:
         await message.answer("У тебя пока нет билетов. Нажми «🎁 Играть», чтобы участвовать!")
     else:
-        tickets_str = ", ".join(map(str, tickets))
+        # Форматируем номера билетов как 4 цифры (0001, 0002 и т.д.)
+        tickets_str = ", ".join([f"№{t:04d}" for t in tickets])
         await message.answer(f"Твои билеты ({len(tickets)} шт.):\n{tickets_str}")
 
 @router.message(F.text == "🏆 Лидерборд")

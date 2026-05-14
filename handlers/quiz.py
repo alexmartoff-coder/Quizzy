@@ -210,7 +210,11 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
         start_id = await increment_ticket_id(bonus)
         for i in range(bonus):
             await add_ticket(user_id, start_id + i, "bonus")
-        msg += f"🎉 Ты получаешь <b>{bonus} бонусных билетов</b> (№{start_id} — №{start_id + bonus - 1})!"
+
+        if bonus == 1:
+            msg += f"🎉 Ты получаешь <b>{bonus} бонусный билет</b> (№{start_id:04d})!"
+        else:
+            msg += f"🎉 Ты получаешь <b>{bonus} бонусных билета</b> (№{start_id:04d} — №{start_id + bonus - 1:04d})!"
     else:
         msg += "Бонусных билетов в этот раз нет. Попробуй еще раз!"
 

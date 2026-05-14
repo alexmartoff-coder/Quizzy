@@ -18,7 +18,7 @@ async def simulate_successful_payment(message: Message, user_id: int):
 
     await message.bot.send_message(
         chat_id=user_id,
-        text=f"<b>(Тестовый режим)</b> ✅ Оплата прошла! Твой базовый билет <b>№{start_ticket_id}</b> получен.\n\n"
+        text=f"<b>(Тестовый режим)</b> ✅ Оплата прошла! Твой базовый билет <b>№{start_ticket_id:04d}</b> получен.\n\n"
              "Теперь давай проверим твои знания и попробуем заработать бонусные билетов!",
         reply_markup=get_start_quiz_keyboard(),
         parse_mode="HTML"
@@ -92,7 +92,7 @@ async def process_successful_payment(message: Message):
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
 
     await message.answer(
-        f"✅ Оплата прошла! Твой базовый билет <b>№{start_ticket_id}</b> получен.\n\n"
+        f"✅ Оплата прошла! Твой базовый билет <b>№{start_ticket_id:04d}</b> получен.\n\n"
         "Теперь давай проверим твои знания и попробуем заработать бонусные билеты!",
         reply_markup=get_start_quiz_keyboard(),
         parse_mode="HTML"
