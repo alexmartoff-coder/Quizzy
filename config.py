@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from datetime import datetime
 
 load_dotenv()
 
@@ -10,6 +9,5 @@ CHANNEL_ID = "@mozgo_boy"
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
 TICKET_LIMIT = 2500
-DEADLINE_DATE = datetime(2026, 4, 10, 23, 59, 59) # ПРАВИЛА: Восстановлена дата дедлайна
 
 QUIZ_PRICE = 99  # in RUB
