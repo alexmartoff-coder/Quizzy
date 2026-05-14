@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 from handlers.quiz_states import QuizStates, QUESTIONS
-from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, increment_ticket_id, add_ticket, get_total_tickets_count, close_collection, is_collection_closed
+from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, increment_ticket_id, add_ticket, get_total_tickets_count, close_collection, is_collection_closed, check_and_trigger_closure
 from keyboards.menu import get_main_menu_keyboard
 import asyncio
 import time
@@ -82,6 +82,10 @@ async def handle_timeout(message: Message, state: FSMContext, question_index: in
 
 @router.callback_query(F.data == "start_quiz")
 async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
+    if await is_collection_closed():
+        await callback.answer("Сбор билетов завершён!", show_alert=True)
+        return
+
     user_id = callback.from_user.id
     session = await get_quiz_session(user_id)
     if not session or not session[2]: # session[2] is is_active
@@ -166,27 +170,14 @@ async def finish_quiz(message: Message, state: FSMContext, user_id: int):
     await finish_quiz_session(user_id)
     await state.clear()
 
+    total_attempt_tickets = 1 + bonus_tickets
     result_text = f"🏁 Квиз завершён!\n\nТвой результат: {score}/10\n"
     if bonus_tickets > 0:
-        result_text += f"🎉 Ты получаешь {bonus_tickets} бонусных билетов (№{start_ticket_id} - №{start_ticket_id + bonus_tickets - 1})!"
-    else:
-        result_text += "К сожалению, в этот раз без бонусов. Попробуй еще раз!"
+        result_text += f"🎉 Ты получаешь {bonus_tickets} бонусных билетов (№{start_ticket_id} - №{start_ticket_id + bonus_tickets - 1})!\n"
+
+    result_text += f"Всего за эту попытку получено билетов: {total_attempt_tickets}"
 
     await message.bot.send_message(chat_id=user_id, text=result_text, reply_markup=await get_main_menu_keyboard())
 
     # Check limit and announce
-    total_tickets = await get_total_tickets_count()
-    if total_tickets >= TICKET_LIMIT:
-        if not await is_collection_closed():
-            await close_collection()
-            # Send to channel using the bot instance from the message
-            try:
-                await message.bot.send_message(
-                    chat_id=CHANNEL_ID,
-                    text="🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
-                         "Мы достигли лимита в 2500 билетов раньше срока.\n"
-                         "Спасибо всем, кто принял участие!\n\n"
-                         "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
-                )
-            except Exception as e:
-                logging.error(f"Failed to send to channel: {e}")
+    await check_and_trigger_closure(message.bot)

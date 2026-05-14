@@ -1,6 +1,9 @@
 import aiosqlite
 import os
 from datetime import datetime
+import config
+import logging
+from aiogram import Bot
 
 DB_PATH = "bot_database.db"
 
@@ -128,6 +131,8 @@ async def get_leaderboard(limit=10):
             return await cursor.fetchall()
 
 async def is_collection_closed():
+    if datetime.now() > config.DEADLINE_DATE:
+        return True
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
             row = await cursor.fetchone()
@@ -137,3 +142,19 @@ async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE settings SET value = '1' WHERE key = 'is_closed'")
         await db.commit()
+
+async def check_and_trigger_closure(bot: Bot):
+    total_tickets = await get_total_tickets_count()
+    if total_tickets >= config.TICKET_LIMIT:
+        if not await is_collection_closed():
+            await close_collection()
+            try:
+                await bot.send_message(
+                    chat_id=config.CHANNEL_ID,
+                    text="🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                         "Мы достигли лимита в 2500 билетов раньше срока.\n"
+                         "Спасибо всем, кто принял участие!\n\n"
+                         "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
+            except Exception as e:
+                logging.error(f"Failed to send to channel: {e}")

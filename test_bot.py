@@ -3,6 +3,8 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 from database.db import init_db, add_user, get_next_ticket_id, get_total_tickets_count, is_collection_closed, DB_PATH
 import os
+import config
+from datetime import datetime
 
 class TestBotLogic(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -39,9 +41,22 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
     async def test_collection_closure(self):
         with patch("database.db.DB_PATH", self.db_path):
             from database.db import close_collection
-            self.assertFalse(await is_collection_closed())
-            await close_collection()
-            self.assertTrue(await is_collection_closed())
+            with patch("config.DEADLINE_DATE", datetime(2099, 1, 1)):
+                self.assertFalse(await is_collection_closed())
+                await close_collection()
+                self.assertTrue(await is_collection_closed())
+
+    async def test_date_deadline(self):
+        with patch("database.db.DB_PATH", self.db_path):
+            from database.db import is_collection_closed
+
+            # Test before deadline
+            with patch("config.DEADLINE_DATE", datetime(2099, 1, 1)):
+                self.assertFalse(await is_collection_closed())
+
+            # Test after deadline
+            with patch("config.DEADLINE_DATE", datetime(2020, 1, 1)):
+                self.assertTrue(await is_collection_closed())
 
     @patch("aiogram.Bot")
     async def test_quiz_completion_logic(self, MockBot):
@@ -63,7 +78,9 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
             mock_state = AsyncMock()
 
             # Mock TICKET_LIMIT to 2 for testing closure
-            with patch("handlers.quiz.TICKET_LIMIT", 2):
+            with patch("config.TICKET_LIMIT", 2), \
+                 patch("config.DEADLINE_DATE", datetime(2099, 1, 1)), \
+                 patch("config.CHANNEL_ID", "@mozgo_boy"):
                 await finish_quiz(mock_message, mock_state, user_id)
 
             tickets = await get_user_tickets(user_id)
