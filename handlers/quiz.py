@@ -15,16 +15,16 @@ import logging
 
 router = Router()
 
-def get_question_keyboard(question_id, options):
+def get_question_keyboard(question_id, options, question_index):
     keyboard = []
     for i, option in enumerate(options):
-        keyboard.append([InlineKeyboardButton(text=option, callback_data=f"answer_{question_id}_{i}")])
+        # Добавляем question_index в callback_data для верификации
+        keyboard.append([InlineKeyboardButton(text=option, callback_data=f"answer_{question_id}_{i}_{question_index}")])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 async def send_question(message: Message, state: FSMContext, question_index: int, user_id: int):
     data = await state.get_data()
     # === FIXED: РАНДОМИЗАЦИЯ КВИЗА ===
-    # Получаем 10 отобранных вопросов из стейта (теперь они генерируются динамически)
     current_questions = data.get("current_questions")
 
     if not current_questions or question_index >= len(current_questions):
@@ -40,7 +40,12 @@ async def send_question(message: Message, state: FSMContext, question_index: int
     question = current_questions[question_index]
     text = f"❓ **Вопрос {question_index + 1}/10**\n\n{question['question']}\n\n⏱ У тебя 30 секунд!"
 
-    msg = await message.bot.send_message(chat_id=user_id, text=text, reply_markup=get_question_keyboard(question['id'], question['options']), parse_mode="Markdown")
+    msg = await message.bot.send_message(
+        chat_id=user_id,
+        text=text,
+        reply_markup=get_question_keyboard(question['id'], question['options'], question_index),
+        parse_mode="Markdown"
+    )
 
     # Start timeout task
     # === FIXED: ТАЙМАУТ ===
@@ -57,7 +62,6 @@ async def send_question(message: Message, state: FSMContext, question_index: int
 
 async def handle_timeout(message: Message, state: FSMContext, question_index: int, msg_id: int, user_id: int):
     # === FIXED: ТАЙМАУТ ===
-    # Логика ожидания 30 секунд и автоматического перехода
     try:
         await asyncio.sleep(30)
         data = await state.get_data()
@@ -92,7 +96,6 @@ async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     # === FIXED: РАНДОМИЗАЦИЯ КВИЗА ===
-    # Подключаем генератор вопросов: каждый квиз — новые оригинальные темы и вопросы
     await callback.message.answer("🔄 Подбираем вопросы специально для тебя...")
     current_questions = await generate_questions(10)
     await state.update_data(current_questions=current_questions)
@@ -101,30 +104,39 @@ async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(QuizStates.answering, F.data.startswith("answer_"))
 async def process_answer(callback: CallbackQuery, state: FSMContext):
+    # ВСЕГДА отвечаем на callback, чтобы убрать "загрузку"
+    await callback.answer()
+
     user_id = callback.from_user.id
     data = await state.get_data()
 
-    # Cancel timeout task as soon as answer is received
+    parts = callback.data.split("_")
+    # answer_{id}_{index}_{question_index}
+    question_id = int(parts[1])
+    answer_index = int(parts[2])
+    cb_question_index = int(parts[3])
+
+    current_question_index = data.get("current_question_index")
+
+    # Игнорируем ответы на старые вопросы
+    if cb_question_index != current_question_index:
+        return
+
+    # Cancel timeout task as soon as valid answer is received
     # === FIXED: ТАЙМАУТ ===
     timeout_task = data.get("timeout_task")
     if timeout_task and not timeout_task.done():
         timeout_task.cancel()
 
-    parts = callback.data.split("_")
-    question_id = int(parts[1])
-    answer_index = int(parts[2])
-
-    question_index = data.get("current_question_index")
     current_questions = data.get("current_questions")
-    question = current_questions[question_index]
+    question = current_questions[current_question_index]
 
     if question['id'] != question_id:
-        await callback.answer()
         return
 
     # Check time (with small grace period)
     if time.time() - data.get("start_time", 0) > 31:
-        await callback.answer("Время вышло!", show_alert=True)
+        # Хотя handle_timeout должен был сработать, на всякий случай
         return
 
     await state.set_state(None) # Stop answering
@@ -139,10 +151,9 @@ async def process_answer(callback: CallbackQuery, state: FSMContext):
         response = f"❌ Неверно. Правильный ответ: {question['options'][question['correct_index']]}\n\n{question['explanation']}"
 
     await callback.message.answer(response)
-    await callback.answer()
 
     # Move to next question
-    next_index = question_index + 1
+    next_index = current_question_index + 1
     await update_quiz_question(user_id, next_index)
     await send_question(callback.message, state, next_index, user_id)
 
