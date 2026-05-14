@@ -5,6 +5,7 @@ from aiogram.exceptions import TelegramBadRequest
 from handlers.quiz_states import QuizStates, QUESTIONS
 from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, increment_ticket_id, add_ticket, get_total_tickets_count, close_collection, is_collection_closed
 from keyboards.menu import get_main_menu_keyboard
+from utils.generator import generate_questions
 import asyncio
 import time
 import random
@@ -23,10 +24,10 @@ def get_question_keyboard(question_id, options):
 async def send_question(message: Message, state: FSMContext, question_index: int, user_id: int):
     data = await state.get_data()
     # === FIXED: РАНДОМИЗАЦИЯ КВИЗА ===
-    # Получаем 10 отобранных вопросов из стейта
+    # Получаем 10 отобранных вопросов из стейта (теперь они генерируются динамически)
     current_questions = data.get("current_questions")
 
-    if question_index >= len(current_questions):
+    if not current_questions or question_index >= len(current_questions):
         await finish_quiz(message, state, user_id)
         return
 
@@ -91,8 +92,9 @@ async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     # === FIXED: РАНДОМИЗАЦИЯ КВИЗА ===
-    # Выбираем 10 случайных уникальных вопросов из пула
-    current_questions = random.sample(QUESTIONS, 10)
+    # Подключаем генератор вопросов: каждый квиз — новые оригинальные темы и вопросы
+    await callback.message.answer("🔄 Подбираем вопросы специально для тебя...")
+    current_questions = await generate_questions(10)
     await state.update_data(current_questions=current_questions)
 
     await send_question(callback.message, state, 0, user_id)
