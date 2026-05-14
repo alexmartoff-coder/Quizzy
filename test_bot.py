@@ -45,8 +45,13 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
 
     @patch("aiogram.Bot")
     async def test_quiz_completion_logic(self, MockBot):
+        mock_bot_instance = MockBot.return_value
+        mock_bot_instance.send_message = AsyncMock()
+        mock_bot_instance.session = MagicMock()
+        mock_bot_instance.session.close = AsyncMock()
+
         with patch("database.db.DB_PATH", self.db_path):
-            from handlers.quiz import finish_quiz
+            from handlers.quiz import finish_quiz_logic
             from database.db import set_quiz_session, get_user_tickets
 
             user_id = 456
@@ -54,17 +59,12 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
             # Mock session with 10 correct answers
             await set_quiz_session(user_id, score=10, current_question=10, is_active=True)
 
-            mock_message = MagicMock()
-            mock_message.chat.id = user_id
-            mock_message.answer = AsyncMock()
-            mock_message.bot = AsyncMock()
-            mock_message.bot.send_message = AsyncMock()
-
             mock_state = AsyncMock()
+            mock_state.get_data = AsyncMock(return_value={})
 
             # Mock TICKET_LIMIT to 2 for testing closure
             with patch("handlers.quiz.TICKET_LIMIT", 2):
-                await finish_quiz(mock_message, mock_state, user_id)
+                await finish_quiz_logic(mock_bot_instance, mock_state, user_id)
 
             tickets = await get_user_tickets(user_id)
             # 3 bonus tickets for score 10
@@ -74,7 +74,7 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(await is_collection_closed())
 
             # Check if channel announcement was attempted
-            mock_message.bot.send_message.assert_any_call(
+            mock_bot_instance.send_message.assert_any_call(
                 chat_id="@mozgo_boy",
                 text=unittest.mock.ANY
             )
