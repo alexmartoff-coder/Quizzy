@@ -1,6 +1,6 @@
 import aiosqlite
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 DB_PATH = "bot_database.db"
 
@@ -156,10 +156,54 @@ async def get_leaderboard(limit=10):
             return await cursor.fetchall()
 
 async def is_collection_closed():
+    from config import COLLECTION_DEADLINE
+    if datetime.now(timezone.utc) >= COLLECTION_DEADLINE:
+        return True
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
             row = await cursor.fetchone()
             return row[0] == '1'
+
+async def check_and_trigger_closure(bot):
+    """
+    Проверяет, достигнут ли лимит билетов или наступил ли дедлайн.
+    Если да, закрывает сбор и отправляет уведомление в канал.
+    """
+    from config import TICKET_LIMIT, COLLECTION_DEADLINE, CHANNEL_ID
+    import logging
+
+    total = await get_total_tickets_count()
+    date_reached = datetime.now(timezone.utc) >= COLLECTION_DEADLINE
+
+    if total >= TICKET_LIMIT or date_reached:
+        # Проверяем именно статус в БД, чтобы не отправлять сообщение повторно
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
+                row = await cursor.fetchone()
+                is_already_closed = (row[0] == '1') if row else False
+
+        if not is_already_closed:
+            await close_collection()
+            try:
+                if total >= TICKET_LIMIT:
+                    text = (
+                        "🔥 <b>СБОР БИЛЕТОВ ЗАВЕРШЁН!</b>\n\n"
+                        "Мы достигли лимита в 2500 билетов раньше срока.\n"
+                        "Спасибо всем, кто принял участие!\n\n"
+                        "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                    )
+                else:
+                    text = (
+                        "🔥 <b>СБОР БИЛЕТОВ ЗАВЕРШЁН!</b>\n\n"
+                        "Срок сбора билетов подошёл к концу.\n"
+                        "Спасибо всем, кто принял участие!\n\n"
+                        "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                    )
+                await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="HTML")
+            except Exception as e:
+                logging.error(f"Failed to send closure message to channel: {e}")
+            return True
+    return False
 
 async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:

@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice, CallbackQuery
 from aiogram.filters import Command
 from config import QUIZ_PRICE, PAYMENT_PROVIDER_TOKEN, TICKET_LIMIT, BOT_TOKEN, CHANNEL_ID, OWNER_ID
-from database.db import issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection
+from database.db import issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection, check_and_trigger_closure
 from keyboards.menu import get_payment_keyboard, get_start_quiz_keyboard
 from datetime import datetime
 from aiogram import Bot
@@ -25,26 +25,12 @@ async def simulate_successful_payment(message: Message, user_id: int):
     await message.bot.send_message(
         chat_id=user_id,
         text=f"<b>(Тестовый режим)</b> ✅ Оплата прошла! Твой базовый билет <b>№{ticket_num:04d}</b> получен.\n\n"
-             "Теперь давай проверим твои знания и попробуем заработать бонусные билетов!",
+             "Теперь давай проверим твои знания и попробуем заработать бонусные билеты!",
         reply_markup=get_start_quiz_keyboard(),
         parse_mode="HTML"
     )
 
-    total_tickets = await get_total_tickets_count()
-    if total_tickets >= TICKET_LIMIT:
-        if not await is_collection_closed():
-            await close_collection()
-            try:
-                await message.bot.send_message(
-                    chat_id=CHANNEL_ID,
-                    text="🔥 <b>СБОР БИЛЕТОВ ЗАВЕРШЁН!</b>\n\n"
-                         "Мы достигли лимита в 2500 билетов раньше срока.\n"
-                         "Спасибо всем, кто принял участие!\n\n"
-                         "Дата и время прямого розыгрыша будет объявлена в ближайшие часы.",
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                logging.error(f"Failed to send to channel: {e}")
+    await check_and_trigger_closure(message.bot)
 
 # ТЕСТОВЫЙ РЕЖИМ: Команда /testpay для владельца
 # Убрать после теста
@@ -58,7 +44,7 @@ async def cmd_testpay(message: Message):
 async def cmd_play(message: Message):
     if await is_collection_closed():
         await message.answer(
-            "🎉 <b>Сбор билетов завершён досрочно!</b>\n\n"
+            "🎉 Сбор билетов завершён досрочно!\n\n"
             "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
             "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
             "Следи за обновлениями!",
@@ -110,18 +96,4 @@ async def process_successful_payment(message: Message):
         parse_mode="HTML"
     )
 
-    total_tickets = await get_total_tickets_count()
-    if total_tickets >= TICKET_LIMIT:
-        if not await is_collection_closed():
-            await close_collection()
-            try:
-                await message.bot.send_message(
-                    chat_id=CHANNEL_ID,
-                    text="🔥 <b>СБОР БИЛЕТОВ ЗАВЕРШЁН!</b>\n\n"
-                         "Мы достигли лимита в 2500 билетов раньше срока.\n"
-                         "Спасибо всем, кто принял участие!\n\n"
-                         "Дата и время прямого розыгрыша будет объявлена в ближайшие часы.",
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                logging.error(f"Failed to send to channel: {e}")
+    await check_and_trigger_closure(message.bot)

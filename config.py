@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,5 +10,6 @@ CHANNEL_ID = "@mozgo_boy"
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
 TICKET_LIMIT = 2500
+COLLECTION_DEADLINE = datetime(2026, 4, 10, tzinfo=timezone.utc)
 
 QUIZ_PRICE = 99  # in RUB
