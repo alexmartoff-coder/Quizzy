@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice, CallbackQuery
 from aiogram.filters import Command
 from config import YOOKASSA_PROVIDER_TOKEN, TICKET_LIMIT, CHANNEL_ID, OWNER_ID
@@ -8,28 +8,26 @@ import logging
 
 router = Router()
 
-# 1. ОБЯЗАТЕЛЬНЫЙ ОБРАБОТЧИК pre_checkout_query
-# Должен быть зарегистрирован и отвечать True, иначе форма оплаты не откроется
+# --- ОБРАБОТЧИКИ ПЛАТЕЖЕЙ (YOOKASSA TEST INTEGRATION) ---
+
 @router.pre_checkout_query()
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
-    print(f"PRE_CHECKOUT_QUERY from user {pre_checkout_query.from_user.id}")
-    logging.info(f"PRE_CHECKOUT_QUERY received from {pre_checkout_query.from_user.id}")
+    """Ответ на предварительный запрос (нужен в течение 10 секунд)."""
+    logging.info(f"PRE_CHECKOUT_QUERY: {pre_checkout_query.id}")
     await pre_checkout_query.answer(ok=True)
 
-# 2. ОБРАБОТЧИК successful_payment
-# Срабатывает после подтверждения транзакции банком
 @router.message(F.successful_payment)
 async def successful_payment_handler(message: Message):
-    print(f"SUCCESSFUL_PAYMENT from user {message.from_user.id}")
-    logging.info(f"SUCCESSFUL_PAYMENT confirmed for {message.from_user.id}")
+    """Обработка подтвержденного платежа."""
+    logging.info(f"SUCCESSFUL_PAYMENT: {message.from_user.id}")
 
     await message.answer("✅ Оплата прошла успешно!")
 
     user_id = message.from_user.id
-    # Регистрация
+    # Гарантируем регистрацию
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
 
-    # Логирование
+    # Логируем в БД
     sp = message.successful_payment
     await log_payment(
         user_id,
@@ -39,50 +37,60 @@ async def successful_payment_handler(message: Message):
         sp.provider_payment_charge_id
     )
 
-    # Билет
+    # Выдаем билет и готовим квиз
     await issue_random_tickets(user_id, 1, "base")
-    # Квиз
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
 
     await message.answer("Начинаем квиз за iPhone 17...", reply_markup=get_start_quiz_keyboard())
 
-# --- Основные хендлеры ---
+# --- ГЛАВНЫЕ КОМАНДЫ ---
 
 @router.message(F.text == "🎁 Играть в Квиз за iPhone 17")
 async def cmd_play(message: Message):
+    await add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
     if await is_collection_closed():
         await message.answer("🎉 Сбор билетов завершён досрочно!")
         return
+
     await message.answer(
-        "🎁 <b>Участвуй в розыгрыше iPhone 17!</b>\n\nОплати 99 ₽ и получи доступ к квизу.",
+        "🎁 <b>Участвуй в розыгрыше iPhone 17!</b>\n\n"
+        "Оплати 99 ₽ и получи:\n"
+        "✅ 1 гарантированный билет\n"
+        "✅ Возможность получить бонусные билеты за квиз\n\n"
+        "Готов начать?",
         reply_markup=get_payment_keyboard(),
         parse_mode="HTML"
     )
 
 @router.callback_query(F.data == "pay_99")
 async def process_pay(callback: CallbackQuery):
-    # Убираем прелоадер с инлайн-кнопки
+    if await is_collection_closed():
+        await callback.answer("Сбор билетов завершен!", show_alert=True)
+        return
+
+    # 1. Немедленно снимаем прелоадер с кнопки
     await callback.answer()
 
-    # Сообщение перед инвойсом
-    await callback.message.answer("🧾 Формируем счёт...")
+    # 2. Обратная связь пользователю
+    await callback.message.answer("🧾 Формируем счёт на оплату...")
+
+    logging.info(f"PAYMENT: Sending invoice to {callback.from_user.id}")
 
     try:
-        # 3. Используем message.answer_invoice как просил юзер
-        # Это отправит сообщение-счет в тот же чат
+        # 3. Отправка инвойса (МИНИМАЛЬНЫЙ НАБОР ПАРАМЕТРОВ)
+        # Если форма не появляется, проверьте YOOKASSA_PROVIDER_TOKEN в .env
         await callback.message.answer_invoice(
-            title="Билет участия в розыгрыше",
+            title="Билет на участие в розыгрыше",
             description="1 билет + доступ к квизу",
             provider_token=YOOKASSA_PROVIDER_TOKEN,
             currency="RUB",
             prices=[LabeledPrice(label="Билет", amount=9900)],
             payload="ticket_v1"
         )
-        print("Invoice sent successfully")
+        logging.info("PAYMENT: Invoice sent successfully")
     except Exception as e:
-        print(f"ERROR sending invoice: {e}")
-        logging.error(f"Invoice error: {e}")
-        await callback.message.answer(f"❌ Ошибка: {e}")
+        logging.error(f"PAYMENT: Error sending invoice: {e}")
+        await callback.message.answer(f"❌ Ошибка при создании счета: {e}")
 
 @router.message(Command("testpay"))
 async def cmd_testpay(message: Message):
