@@ -25,6 +25,13 @@ async def init_db():
             )
         """)
         await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_seen_questions (
+                user_id INTEGER,
+                question_id INTEGER,
+                PRIMARY KEY (user_id, question_id)
+            )
+        """)
+        await db.execute("""
             CREATE TABLE IF NOT EXISTS quiz_sessions (
                 user_id INTEGER PRIMARY KEY,
                 score INTEGER DEFAULT 0,
@@ -164,4 +171,23 @@ async def is_collection_closed():
 async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE settings SET value = '1' WHERE key = 'is_closed'")
+        await db.commit()
+
+async def get_user_seen_question_ids(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT question_id FROM user_seen_questions WHERE user_id = ?", (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
+
+async def mark_questions_as_seen(user_id, question_ids):
+    async with aiosqlite.connect(DB_PATH) as db:
+        for q_id in question_ids:
+            await db.execute("INSERT OR IGNORE INTO user_seen_questions (user_id, question_id) VALUES (?, ?)",
+                             (user_id, q_id))
+        await db.commit()
+
+async def clear_user_seen_questions(user_id):
+    """Сброс увиденных вопросов (например, если пул закончился)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM user_seen_questions WHERE user_id = ?", (user_id,))
         await db.commit()

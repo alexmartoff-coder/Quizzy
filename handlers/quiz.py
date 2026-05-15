@@ -2,7 +2,7 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from handlers.quiz_states import QuizStates
-from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, issue_random_tickets, get_total_tickets_count, close_collection, is_collection_closed
+from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, issue_random_tickets, get_total_tickets_count, close_collection, is_collection_closed, mark_questions_as_seen
 from keyboards.menu import get_main_menu_keyboard
 from utils.generator import generate_questions
 import asyncio
@@ -126,8 +126,13 @@ async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
     loading = await callback.message.answer("🔄 Подбираем вопросы...")
 
     try:
-        questions = await generate_questions(10)
+        questions = await generate_questions(user_id, 10)
         await state.update_data(current_questions=questions)
+
+        # Помечаем вопросы как увиденные в БД
+        seen_ids = [q["pool_index"] for q in questions]
+        await mark_questions_as_seen(user_id, seen_ids)
+
         try: await loading.delete()
         except Exception: pass
         await safe_send_question(callback.bot, state, user_id, 0)

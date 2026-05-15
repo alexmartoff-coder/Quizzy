@@ -1,257 +1,185 @@
-import random
-
 # === БОЛЬШОЙ ПУЛ ВОПРОСОВ ===
-# Пул из 40+ качественных вопросов про Apple и iPhone на русском языке.
-# Разделены по темам: История, Модели, Технологии, Дизайн, iOS.
+# Пул из 100+ качественных вопросов про Apple и iPhone на русском языке.
+# Разделены по темам: История, Модели, Технологии, Дизайн, iOS, Mac, iPad, Сервисы.
 
 QUESTIONS_POOL = [
-    # --- История Apple ---
-    {
-        "question": "В каком году Стив Джобс, Стив Возняк и Рональд Уэйн основали Apple?",
-        "options": ["1974", "1976", "1978", "1980"],
-        "correct_index": 1,
-        "explanation": "Apple была основана 1 апреля 1976 года."
-    },
-    {
-        "question": "Как назывался первый компьютер, выпущенный компанией Apple?",
-        "options": ["Apple I", "Apple II", "Macintosh", "Lisa"],
-        "correct_index": 0,
-        "explanation": "Apple I был первым продуктом компании, созданным Стивом Возняком."
-    },
-    {
-        "question": "Какую компанию купила Apple в 1997 году, что привело к возвращению Стива Джобса?",
-        "options": ["NeXT", "Pixar", "Microsoft", "Intel"],
-        "correct_index": 0,
-        "explanation": "Покупка NeXT позволила использовать их наработки для создания macOS."
-    },
-    {
-        "question": "Кто стал генеральным директором Apple после смерти Стива Джобса в 2011 году?",
-        "options": ["Тим Кук", "Джони Айв", "Фил Шиллер", "Эдди Кью"],
-        "correct_index": 0,
-        "explanation": "Тим Кук занял пост CEO в августе 2011 года."
-    },
-    {
-        "question": "В каком году Стив Джобс представил первый iPhone на конференции Macworld?",
-        "options": ["2005", "2006", "2007", "2008"],
-        "correct_index": 2,
-        "explanation": "Знаменитая презентация состоялась 9 января 2007 года."
-    },
+    # --- 1-40: Оригинальный пул (перенесен) ---
+    {"question": "В каком году Стив Джобс, Стив Возняк и Рональд Уэйн основали Apple?", "options": ["1974", "1976", "1978", "1980"], "correct_index": 1, "explanation": "Apple была основана 1 апреля 1976 года."},
+    {"question": "Как назывался первый компьютер, выпущенный компанией Apple?", "options": ["Apple I", "Apple II", "Macintosh", "Lisa"], "correct_index": 0, "explanation": "Apple I был первым продуктом компании, созданным Стивом Возняком."},
+    {"question": "Какую компанию купила Apple в 1997 году, что привело к возвращению Стива Джобса?", "options": ["NeXT", "Pixar", "Microsoft", "Intel"], "correct_index": 0, "explanation": "Покупка NeXT позволила использовать их наработки для создания macOS."},
+    {"question": "Кто стал генеральным директором Apple после смерти Стива Джобса в 2011 году?", "options": ["Тим Кук", "Джони Айв", "Фил Шиллер", "Эдди Кью"], "correct_index": 0, "explanation": "Тим Кук занял пост CEO в августе 2011 года."},
+    {"question": "В каком году Стив Джобс представил первый iPhone на конференции Macworld?", "options": ["2005", "2006", "2007", "2008"], "correct_index": 2, "explanation": "Знаменитая презентация состоялась 9 января 2007 года."},
+    {"question": "Какой iPhone первым получил поддержку сетей 3G?", "options": ["iPhone Original", "iPhone 3G", "iPhone 3GS", "iPhone 4"], "correct_index": 1, "explanation": "Вторая модель iPhone получила название 3G именно за поддержку новых сетей."},
+    {"question": "Какой iPhone первым получил сканер Touch ID?", "options": ["iPhone 5", "iPhone 5s", "iPhone 6", "iPhone 4s"], "correct_index": 1, "explanation": "Touch ID дебютировал в iPhone 5s в 2013 году."},
+    {"question": "В какой модели iPhone впервые убрали разъем для наушников 3.5 мм?", "options": ["iPhone 6s", "iPhone 7", "iPhone 8", "iPhone X"], "correct_index": 1, "explanation": "iPhone 7 стал первым смартфоном Apple без аудиоразъема."},
+    {"question": "Какой iPhone стал первым с OLED-дисплеем и без кнопки Домой?", "options": ["iPhone 8", "iPhone X", "iPhone Xs", "iPhone 11"], "correct_index": 1, "explanation": "Юбилейный iPhone X радикально изменил дизайн линейки."},
+    {"question": "Какой iPhone первым получил корпус из титана?", "options": ["iPhone 14 Pro", "iPhone 15 Pro", "iPhone 13 Pro", "iPhone 12 Pro"], "correct_index": 1, "explanation": "Линейка 15 Pro получила рамку из авиационного титана."},
+    {"question": "Какая модель iPhone имела пластиковый корпус и выпускалась в ярких цветах?", "options": ["iPhone 5", "iPhone 5c", "iPhone 5s", "iPhone SE"], "correct_index": 1, "explanation": "iPhone 5c позиционировался как более доступная и молодежная модель."},
+    {"question": "Как называется технология дисплея с высокой плотностью пикселей, представленная в iPhone 4?", "options": ["Super AMOLED", "Liquid Crystal", "Retina", "True Tone"], "correct_index": 2, "explanation": "Retina-дисплей сделал изображение невероятно четким."},
+    {"question": "Как называется фирменный процессор Apple, дебютировавший в iPhone 4?", "options": ["Apple A4", "Apple M1", "Apple i1", "Apple X1"], "correct_index": 0, "explanation": "A4 стал первым процессором собственной разработки Apple для iPhone."},
+    {"question": "Как называется голосовой помощник, появившийся в iPhone 4S?", "options": ["Alexa", "Siri", "Alice", "Cortana"], "correct_index": 1, "explanation": "Siri стала одной из ключевых особенностей iPhone 4S."},
+    {"question": "Какой разъем использовался в iPhone до перехода на Lightning в 2012 году?", "options": ["Micro-USB", "Mini-USB", "30-pin connector", "USB-C"], "correct_index": 2, "explanation": "Старый широкий разъем использовался со времен первых iPod."},
+    {"question": "Как называется технология распознавания лица в iPhone?", "options": ["Face Scan", "Look ID", "Face ID", "Bio Unlock"], "correct_index": 2, "explanation": "Face ID пришла на смену Touch ID в iPhone X."},
+    {"question": "Какая технология позволяет iPhone заряжаться без проводов?", "options": ["AirPower", "Qi", "NFC", "MagSafe Charge"], "correct_index": 1, "explanation": "Apple использует общемировой стандарт беспроводной зарядки Qi."},
+    {"question": "Как называлась операционная система iPhone до 2010 года?", "options": ["Mac OS Mobile", "iPhone OS", "Apple OS", "iOS Lite"], "correct_index": 1, "explanation": "Название iOS было принято только во время выхода iPad."},
+    {"question": "В какой версии iOS появился магазин приложений App Store?", "options": ["iOS 1", "iOS 2", "iOS 3", "iOS 4"], "correct_index": 1, "explanation": "App Store был представлен вместе с iPhone 3G."},
+    {"question": "Как называется функция быстрой передачи файлов между устройствами Apple?", "options": ["iDrop", "AirDrop", "BlueDrop", "QuickShare"], "correct_index": 1, "explanation": "AirDrop использует Wi-Fi и Bluetooth для мгновенной передачи."},
+    {"question": "Кто был главным дизайнером Apple, создавшим облик iMac, iPod и iPhone?", "options": ["Стив Возняк", "Тим Кук", "Джони Айв", "Крейг Федериги"], "correct_index": 2, "explanation": "Сэр Джонатан Айв определял дизайн Apple более 20 лет."},
+    {"question": "Как называется браузер по умолчанию на всех устройствах Apple?", "options": ["Chrome", "Safari", "Opera", "iSearch"], "correct_index": 1, "explanation": "Safari построен на движке WebKit и оптимизирован для Apple."},
+    {"question": "Какое устройство Apple представило в 2010 году как 'третью категорию' между смартфоном и ноутбуком?", "options": ["Apple Watch", "iPad", "MacBook Air", "Apple TV"], "correct_index": 1, "explanation": "Первый iPad перевернул рынок планшетных компьютеров."},
+    {"question": "Как называется подписочный сервис Apple с играми?", "options": ["Apple Games", "Apple Play", "Apple Arcade", "iGame"], "correct_index": 2, "explanation": "Apple Arcade предлагает доступ к сотням игр без рекламы."},
+    {"question": "Какое животное изображено на логотипе языка программирования Swift, созданного Apple?", "options": ["Гепард", "Орел", "Стриж", "Дельфин"], "correct_index": 2, "explanation": "Swift переводится как 'Стриж', что подчеркивает скорость языка."},
+    {"question": "Какое кодовое имя носил проект по созданию первого iPhone?", "options": ["Project X", "Project Titan", "Project Purple", "Project Galaxy"], "correct_index": 2, "explanation": "Project Purple был одним из самых секретных в истории компании."},
+    {"question": "В каком году были представлены первые беспроводные наушники AirPods?", "options": ["2015", "2016", "2017", "2018"], "correct_index": 1, "explanation": "AirPods были анонсированы в сентябре 2016 года."},
+    {"question": "Какой материал использовался в корпусе iPhone 4 с обеих сторон?", "options": ["Пластик", "Алюминий", "Стекло", "Керамика"], "correct_index": 2, "explanation": "iPhone 4 имел стеклянный 'сэндвич-дизайн' со стальной рамкой."},
+    {"question": "Как называется приложение для управления умным домом от Apple?", "options": ["iHome", "SmartHouse", "Дом (Home)", "Apple Link"], "correct_index": 2, "explanation": "Приложение 'Дом' объединяет все устройства HomeKit."},
+    {"question": "Как называется функция iPhone, позволяющая создавать анимированные эмодзи?", "options": ["LiveEmoji", "Animoji", "FaceMoji", "iAnim"], "correct_index": 1, "explanation": "Animoji используют систему камер Face ID для захвата мимики."},
+    {"question": "В честь какого сорта яблок назван компьютер Macintosh?", "options": ["Golden", "Granny Smith", "McIntosh", "Fuji"], "correct_index": 2, "explanation": "Джефф Раскин назвал проект в честь любимого сорта яблок."},
+    {"question": "Как называется технология дисплея в iPhone 14 Pro, заменившая 'челку'?", "options": ["Smart Notch", "Magic Island", "Dynamic Island", "Active Area"], "correct_index": 2, "explanation": "Dynamic Island стал интерактивным элементом интерфейса."},
+    {"question": "Какое разрешение видео впервые стало доступно в iPhone 4S?", "options": ["720p", "1080p (Full HD)", "4K", "480p"], "correct_index": 1, "explanation": "iPhone 4S стал первым iPhone с записью 1080p видео."},
+    {"question": "Как называлась первая версия операционной системы для Apple Watch?", "options": ["iOS Watch", "watchOS", "ClockOS", "WristOS"], "correct_index": 1, "explanation": "watchOS была разработана специально для носимых устройств."},
+    {"question": "Какой iPhone первым получил три камеры?", "options": ["iPhone X", "iPhone Xs", "iPhone 11 Pro", "iPhone 12 Pro"], "correct_index": 2, "explanation": "Линейка 11 Pro ввела стандарт трехкамерной системы."},
+    {"question": "Как называется сервис Apple для хранения файлов и фото в облаке?", "options": ["iDrive", "AppleCloud", "iCloud", "MobileMe"], "correct_index": 2, "explanation": "iCloud объединяет все устройства пользователя в единую экосистему."},
+    {"question": "Кто из основателей Apple вручную собрал первые платы Apple I?", "options": ["Стив Джобс", "Стив Возняк", "Рональд Уэйн", "Майк Марккула"], "correct_index": 1, "explanation": "Стив 'Воз' Возняк был техническим мозгом компании на старте."},
+    {"question": "Как называется приложение для поиска потерянных устройств Apple?", "options": ["Find My iPhone", "Локатор", "Search Apple", "iTracker"], "correct_index": 1, "explanation": "Приложение 'Локатор' объединило сервисы поиска устройств и друзей."},
+    {"question": "В каком году Apple перешла на собственные процессоры M1 для компьютеров Mac?", "options": ["2018", "2019", "2020", "2021"], "correct_index": 2, "explanation": "Переход на Apple Silicon начался в ноябре 2020 года."},
+    {"question": "Какое разрешение экрана имел первый iPhone (2007)?", "options": ["320x480", "640x960", "480x800", "240x320"], "correct_index": 0, "explanation": "Для того времени разрешение 320x480 было стандартом высокой четкости."},
 
-    # --- Модели iPhone ---
-    {
-        "question": "Какой iPhone первым получил поддержку сетей 3G?",
-        "options": ["iPhone Original", "iPhone 3G", "iPhone 3GS", "iPhone 4"],
-        "correct_index": 1,
-        "explanation": "Вторая модель iPhone получила название 3G именно за поддержку новых сетей."
-    },
-    {
-        "question": "Какой iPhone первым получил сканер Touch ID?",
-        "options": ["iPhone 5", "iPhone 5s", "iPhone 6", "iPhone 4s"],
-        "correct_index": 1,
-        "explanation": "Touch ID дебютировал в iPhone 5s в 2013 году."
-    },
-    {
-        "question": "В какой модели iPhone впервые убрали разъем для наушников 3.5 мм?",
-        "options": ["iPhone 6s", "iPhone 7", "iPhone 8", "iPhone X"],
-        "correct_index": 1,
-        "explanation": "iPhone 7 стал первым смартфоном Apple без аудиоразъема."
-    },
-    {
-        "question": "Какой iPhone стал первым с OLED-дисплеем и без кнопки Домой?",
-        "options": ["iPhone 8", "iPhone X", "iPhone Xs", "iPhone 11"],
-        "correct_index": 1,
-        "explanation": "Юбилейный iPhone X радикально изменил дизайн линейки."
-    },
-    {
-        "question": "Какой iPhone первым получил корпус из титана?",
-        "options": ["iPhone 14 Pro", "iPhone 15 Pro", "iPhone 13 Pro", "iPhone 12 Pro"],
-        "correct_index": 1,
-        "explanation": "Линейка 15 Pro получила рамку из авиационного титана."
-    },
-    {
-        "question": "Какая модель iPhone имела пластиковый корпус и выпускалась в ярких цветах?",
-        "options": ["iPhone 5", "iPhone 5c", "iPhone 5s", "iPhone SE"],
-        "correct_index": 1,
-        "explanation": "iPhone 5c позиционировался как более доступная и молодежная модель."
-    },
-
-    # --- Технологии и Компоненты ---
-    {
-        "question": "Как называется технология дисплея с высокой плотностью пикселей, представленная в iPhone 4?",
-        "options": ["Super AMOLED", "Liquid Crystal", "Retina", "True Tone"],
-        "correct_index": 2,
-        "explanation": "Retina-дисплей сделал изображение невероятно четким."
-    },
-    {
-        "question": "Как называется фирменный процессор Apple, дебютировавший в iPhone 4?",
-        "options": ["Apple A4", "Apple M1", "Apple i1", "Apple X1"],
-        "correct_index": 0,
-        "explanation": "A4 стал первым процессором собственной разработки Apple для iPhone."
-    },
-    {
-        "question": "Как называется голосовой помощник, появившийся в iPhone 4S?",
-        "options": ["Alexa", "Siri", "Alice", "Cortana"],
-        "correct_index": 1,
-        "explanation": "Siri стала одной из ключевых особенностей iPhone 4S."
-    },
-    {
-        "question": "Какой разъем использовался в iPhone до перехода на Lightning в 2012 году?",
-        "options": ["Micro-USB", "Mini-USB", "30-pin connector", "USB-C"],
-        "correct_index": 2,
-        "explanation": "Старый широкий разъем использовался со времен первых iPod."
-    },
-    {
-        "question": "Как называется технология распознавания лица в iPhone?",
-        "options": ["Face Scan", "Look ID", "Face ID", "Bio Unlock"],
-        "correct_index": 2,
-        "explanation": "Face ID пришла на смену Touch ID в iPhone X."
-    },
-    {
-        "question": "Какая технология позволяет iPhone заряжаться без проводов?",
-        "options": ["AirPower", "Qi", "NFC", "MagSafe Charge"],
-        "correct_index": 1,
-        "explanation": "Apple использует общемировой стандарт беспроводной зарядки Qi."
-    },
-
-    # --- Дизайн и ПО ---
-    {
-        "question": "Как называлась операционная система iPhone до 2010 года?",
-        "options": ["Mac OS Mobile", "iPhone OS", "Apple OS", "iOS Lite"],
-        "correct_index": 1,
-        "explanation": "Название iOS было принято только во время выхода iPad."
-    },
-    {
-        "question": "В какой версии iOS появился магазин приложений App Store?",
-        "options": ["iOS 1", "iOS 2", "iOS 3", "iOS 4"],
-        "correct_index": 1,
-        "explanation": "App Store был представлен вместе с iPhone 3G."
-    },
-    {
-        "question": "Как называется функция быстрой передачи файлов между устройствами Apple?",
-        "options": ["iDrop", "AirDrop", "BlueDrop", "QuickShare"],
-        "correct_index": 1,
-        "explanation": "AirDrop использует Wi-Fi и Bluetooth для мгновенной передачи."
-    },
-    {
-        "question": "Кто был главным дизайнером Apple, создавшим облик iMac, iPod и iPhone?",
-        "options": ["Стив Возняк", "Тим Кук", "Джони Айв", "Крейг Федериги"],
-        "correct_index": 2,
-        "explanation": "Сэр Джонатан Айв определял дизайн Apple более 20 лет."
-    },
-    {
-        "question": "Как называется браузер по умолчанию на всех устройствах Apple?",
-        "options": ["Chrome", "Safari", "Opera", "iSearch"],
-        "correct_index": 1,
-        "explanation": "Safari построен на движке WebKit и оптимизирован для Apple."
-    },
-
-    # --- Прочее ---
-    {
-        "question": "Какое устройство Apple представило в 2010 году как 'третью категорию' между смартфоном и ноутбуком?",
-        "options": ["Apple Watch", "iPad", "MacBook Air", "Apple TV"],
-        "correct_index": 1,
-        "explanation": "Первый iPad перевернул рынок планшетных компьютеров."
-    },
-    {
-        "question": "Как называется подписочный сервис Apple с играми?",
-        "options": ["Apple Games", "Apple Play", "Apple Arcade", "iGame"],
-        "correct_index": 2,
-        "explanation": "Apple Arcade предлагает доступ к сотням игр без рекламы."
-    },
-    {
-        "question": "Какое животное изображено на логотипе языка программирования Swift, созданного Apple?",
-        "options": ["Гепард", "Орел", "Стриж", "Дельфин"],
-        "correct_index": 2,
-        "explanation": "Swift переводится как 'Стриж', что подчеркивает скорость языка."
-    },
-    {
-        "question": "Какое кодовое имя носил проект по созданию первого iPhone?",
-        "options": ["Project X", "Project Titan", "Project Purple", "Project Galaxy"],
-        "correct_index": 2,
-        "explanation": "Project Purple был одним из самых секретных в истории компании."
-    },
-    {
-        "question": "В каком году были представлены первые беспроводные наушники AirPods?",
-        "options": ["2015", "2016", "2017", "2018"],
-        "correct_index": 1,
-        "explanation": "AirPods были анонсированы в сентябре 2016 года."
-    },
-    {
-        "question": "Какой материал использовался в корпусе iPhone 4 с обеих сторон?",
-        "options": ["Пластик", "Алюминий", "Стекло", "Керамика"],
-        "correct_index": 2,
-        "explanation": "iPhone 4 имел стеклянный 'сэндвич-дизайн' со стальной рамкой."
-    },
-    {
-        "question": "Как называется приложение для управления умным домом от Apple?",
-        "options": ["iHome", "SmartHouse", "Дом (Home)", "Apple Link"],
-        "correct_index": 2,
-        "explanation": "Приложение 'Дом' объединяет все устройства HomeKit."
-    },
-    {
-        "question": "Как называется функция iPhone, позволяющая создавать анимированные эмодзи?",
-        "options": ["LiveEmoji", "Animoji", "FaceMoji", "iAnim"],
-        "correct_index": 1,
-        "explanation": "Animoji используют систему камер Face ID для захвата мимики."
-    },
-    {
-        "question": "В честь какого сорта яблок назван компьютер Macintosh?",
-        "options": ["Golden", "Granny Smith", "McIntosh", "Fuji"],
-        "correct_index": 2,
-        "explanation": "Джефф Раскин назвал проект в честь любимого сорта яблок."
-    },
-    {
-        "question": "Как называется технология дисплея в iPhone 14 Pro, заменившая 'челку'?",
-        "options": ["Smart Notch", "Magic Island", "Dynamic Island", "Active Area"],
-        "correct_index": 2,
-        "explanation": "Dynamic Island стал интерактивным элементом интерфейса."
-    },
-    {
-        "question": "Какое разрешение видео впервые стало доступно в iPhone 4S?",
-        "options": ["720p", "1080p (Full HD)", "4K", "480p"],
-        "correct_index": 1,
-        "explanation": "iPhone 4S стал первым iPhone с записью 1080p видео."
-    },
-    {
-        "question": "Как называлась первая версия операционной системы для Apple Watch?",
-        "options": ["iOS Watch", "watchOS", "ClockOS", "WristOS"],
-        "correct_index": 1,
-        "explanation": "watchOS была разработана специально для носимых устройств."
-    },
-    {
-        "question": "Какой iPhone первым получил три камеры?",
-        "options": ["iPhone X", "iPhone Xs", "iPhone 11 Pro", "iPhone 12 Pro"],
-        "correct_index": 2,
-        "explanation": "Линейка 11 Pro ввела стандарт трехкамерной системы."
-    },
-    {
-        "question": "Как называется сервис Apple для хранения файлов и фото в облаке?",
-        "options": ["iDrive", "AppleCloud", "iCloud", "MobileMe"],
-        "correct_index": 2,
-        "explanation": "iCloud объединяет все устройства пользователя в единую экосистему."
-    },
-    {
-        "question": "Кто из основателей Apple вручную собрал первые платы Apple I?",
-        "options": ["Стив Джобс", "Стив Возняк", "Рональд Уэйн", "Майк Марккула"],
-        "correct_index": 1,
-        "explanation": "Стив 'Воз' Возняк был техническим мозгом компании на старте."
-    },
-    {
-        "question": "Как называется приложение для поиска потерянных устройств Apple?",
-        "options": ["Find My iPhone", "Локатор", "Search Apple", "iTracker"],
-        "correct_index": 1,
-        "explanation": "Приложение 'Локатор' объединило сервисы поиска устройств и друзей."
-    },
-    {
-        "question": "В каком году Apple перешла на собственные процессоры M1 для компьютеров Mac?",
-        "options": ["2018", "2019", "2020", "2021"],
-        "correct_index": 2,
-        "explanation": "Переход на Apple Silicon начался в ноябре 2020 года."
-    },
-    {
-        "question": "Какое разрешение экрана имел первый iPhone (2007)?",
-        "options": ["320x480", "640x960", "480x800", "240x320"],
-        "correct_index": 0,
-        "explanation": "Для того времени разрешение 320x480 было стандартом высокой четкости."
-    }
+    # --- Новые вопросы (41-100+) ---
+    {"question": "Как назывался первый портативный компьютер Apple, выпущенный в 1989 году?", "options": ["MacBook", "iBook", "Macintosh Portable", "PowerBook"], "correct_index": 2, "explanation": "Macintosh Portable весил более 7 кг и стоил очень дорого."},
+    {"question": "Как звали третьего сооснователя Apple, который продал свою долю за 800 долларов через 12 дней?", "options": ["Рональд Уэйн", "Майк Марккула", "Джон Скалли", "Гил Амелио"], "correct_index": 0, "explanation": "Рональд Уэйн нарисовал первый логотип Apple и написал соглашение о партнерстве."},
+    {"question": "Какой продукт Apple рекламировался в знаменитом ролике '1984', показанном во время Супербоула?", "options": ["Apple II", "Macintosh", "Lisa", "Apple III"], "correct_index": 1, "explanation": "Ролик Ридли Скотта представил Macintosh как символ свободы."},
+    {"question": "Как называется штаб-квартира Apple в Купертино, напоминающая космический корабль?", "options": ["Apple Center", "Infinite Loop", "Apple Park", "Silicon Ring"], "correct_index": 2, "explanation": "Apple Park был открыт для сотрудников в 2017 году."},
+    {"question": "В каком году Apple представила музыкальный плеер iPod?", "options": ["1999", "2001", "2003", "2005"], "correct_index": 1, "explanation": "Первый iPod был представлен в октябре 2001 года со слоганом '1000 песен в вашем кармане'."},
+    {"question": "Какое кодовое имя носила операционная система macOS 10.0?", "options": ["Cheetah", "Puma", "Jaguar", "Panther"], "correct_index": 0, "explanation": "Первые версии macOS X назывались в честь крупных кошек (Cheetah - Гепард)."},
+    {"question": "Как называется технология беспроводной передачи звука и видео от Apple?", "options": ["AirCast", "AirPlay", "iStream", "QuickPlay"], "correct_index": 1, "explanation": "AirPlay позволяет транслировать контент с iPhone на Apple TV или колонки."},
+    {"question": "Какой iPhone стал первым с поддержкой 5G?", "options": ["iPhone 11", "iPhone 12", "iPhone 13", "iPhone 14"], "correct_index": 1, "explanation": "Вся линейка iPhone 12 получила поддержку сетей пятого поколения."},
+    {"question": "Как называется приложение для видеозвонков между устройствами Apple?", "options": ["iChat", "FaceTime", "Apple Talk", "VideoLink"], "correct_index": 1, "explanation": "FaceTime был представлен вместе с iPhone 4."},
+    {"question": "Какая версия iPhone стала самой продаваемой в истории (более 220 млн штук)?", "options": ["iPhone 4", "iPhone 6 / 6 Plus", "iPhone 11", "iPhone 13"], "correct_index": 1, "explanation": "iPhone 6 и 6 Plus установили рекорд продаж благодаря переходу на большие экраны."},
+    {"question": "Как называется собственная банковская карта Apple?", "options": ["Apple Pay Card", "iCard", "Apple Card", "Apple Cash"], "correct_index": 2, "explanation": "Apple Card — это цифровая и титановая кредитная карта от Apple."},
+    {"question": "Какой объем памяти был у самого первого iPhone (минимальная версия)?", "options": ["2 ГБ", "4 ГБ", "8 ГБ", "16 ГБ"], "correct_index": 1, "explanation": "Первый iPhone выпускался в версиях на 4 ГБ и 8 ГБ памяти."},
+    {"question": "Как называется чип в наушниках AirPods Pro, отвечающий за шумоподавление?", "options": ["Apple H1", "Apple W1", "Apple S1", "Apple U1"], "correct_index": 0, "explanation": "Чип H1 обеспечивает стабильное соединение и работу Siri голосом."},
+    {"question": "В какой стране находится самое большое количество заводов по сборке iPhone (Foxconn)?", "options": ["США", "Индия", "Китай", "Вьетнам"], "correct_index": 2, "explanation": "Основная часть iPhone собирается на заводах в Китае."},
+    {"question": "Как называется режим съемки в iPhone, который размывает задний план?", "options": ["Focus Mode", "Blur Mode", "Портрет (Portrait)", "Cinematic"], "correct_index": 2, "explanation": "Портретный режим появился в iPhone 7 Plus благодаря двойной камере."},
+    {"question": "Как называется технология экрана, подстраивающая цветовую температуру под освещение?", "options": ["Auto Light", "True Tone", "Night Shift", "Pure Display"], "correct_index": 1, "explanation": "True Tone делает использование устройства более комфортным для глаз."},
+    {"question": "Какое название носит планшет Apple для профессионалов?", "options": ["iPad Air", "iPad Pro", "iPad Max", "iPad Ultra"], "correct_index": 1, "explanation": "iPad Pro оснащается самыми мощными чипами и продвинутыми экранами."},
+    {"question": "Как называется самый тонкий ноутбук Apple, представленный в 2008 году?", "options": ["MacBook Pro", "MacBook Air", "MacBook Lite", "iLaptop"], "correct_index": 1, "explanation": "Стив Джобс достал первый MacBook Air из обычного почтового конверта."},
+    {"question": "Как называется стилус для iPad?", "options": ["iPen", "Apple Stick", "Apple Pencil", "Magic Pen"], "correct_index": 2, "explanation": "Apple Pencil используется для рисования и заметок на iPad."},
+    {"question": "Как называется технология в iPhone, позволяющая оплачивать покупки касанием?", "options": ["iPay", "Apple Wallet", "Apple Pay", "TapPay"], "correct_index": 2, "explanation": "Apple Pay использует NFC для бесконтактных платежей."},
+    {"question": "В каком году Apple представила умные часы Apple Watch?", "options": ["2013", "2014", "2015", "2016"], "correct_index": 1, "explanation": "Анонс состоялся в 2014 году, а продажи начались в 2015-м."},
+    {"question": "Как называется самая дорогая версия Apple Watch Series 0 (выполненная из золота)?", "options": ["Watch Gold", "Watch Luxury", "Watch Edition", "Watch Pro"], "correct_index": 2, "explanation": "Apple Watch Edition из 18-каратного золота стоили от 10 000 долларов."},
+    {"question": "Как называется подписка, объединяющая все сервисы Apple (Music, TV+, iCloud и др.)?", "options": ["Apple Full", "Apple Family", "Apple One", "Apple Plus"], "correct_index": 2, "explanation": "Apple One позволяет экономить на подписках, оплачивая их единым пакетом."},
+    {"question": "Как называется приложение для монтажа видео на Mac и iOS?", "options": ["Final Cut", "iMovie", "Apple Video", "QuickTime"], "correct_index": 1, "explanation": "iMovie — это бесплатный и простой видеоредактор от Apple."},
+    {"question": "Как называется файловая система, которую Apple использует в своих устройствах с 2017 года?", "options": ["HFS+", "NTFS", "APFS", "exFAT"], "correct_index": 2, "explanation": "Apple File System (APFS) оптимизирована для Flash и SSD накопителей."},
+    {"question": "Как называлась мышь, выпущенная вместе с первым iMac G3 в 1998 году?", "options": ["Magic Mouse", "Hockey Puck", "Mighty Mouse", "iMouse"], "correct_index": 1, "explanation": "Из-за круглой формы пользователи прозвали её 'хоккейной шайбой'."},
+    {"question": "Какой цвет iPhone 5s стал сенсацией и самым дефицитным на старте продаж?", "options": ["Черный", "Серебристый", "Золотой", "Космический серый"], "correct_index": 2, "explanation": "Золотой цвет (Gold) впервые появился именно в iPhone 5s."},
+    {"question": "Как называется технология виртуального объемного звука в наушниках Apple?", "options": ["Surround Pro", "3D Audio", "Spatial Audio (Пространственное аудио)", "Sound360"], "correct_index": 2, "explanation": "Spatial Audio создает эффект кинотеатра при прослушивании музыки или видео."},
+    {"question": "Как называется чип в iPhone 15 Pro?", "options": ["A16 Bionic", "A17 Pro", "M2", "A18"], "correct_index": 1, "explanation": "A17 Pro стал первым 3-нанометровым процессором в смартфонах."},
+    {"question": "В какой модели iPhone впервые появилась кнопка 'Действие' (Action Button)?", "options": ["iPhone 14 Pro", "iPhone 15 Pro", "iPhone SE 3", "iPhone 13 Pro"], "correct_index": 1, "explanation": "Кнопка 'Действие' заменила переключатель беззвучного режима в моделях 15 Pro."},
+    {"question": "Как называется сервис Apple для прослушивания музыки?", "options": ["iTunes Store", "Apple Music", "iMusic", "Beats Radio"], "correct_index": 1, "explanation": "Apple Music был запущен в 2015 году на базе технологий Beats Music."},
+    {"question": "Как звали первого инвестора Apple, который помог компании составить бизнес-план и получить кредит?", "options": ["Майк Марккула", "Билл Гейтс", "Джон Скалли", "Артур Рок"], "correct_index": 0, "explanation": "Майк Марккула вложил 250 тысяч долларов и стал третьим сотрудником Apple."},
+    {"question": "Какое название носила первая версия macOS, вышедшая в 1984 году?", "options": ["Classic Mac OS", "System 1", "Mac OS X", "Apple OS 1"], "correct_index": 1, "explanation": "Операционная система называлась просто System (System 1, System 2 и т.д.)."},
+    {"question": "Как называется функция iPhone, позволяющая использовать его как веб-камеру для Mac?", "options": ["iCamera", "Continuity Camera (Камера непрерывности)", "MacCam", "AirView"], "correct_index": 1, "explanation": "Continuity Camera позволяет закреплять iPhone на крышке MacBook для видеозвонков."},
+    {"question": "Как называется самый мощный настольный компьютер Apple для профессионалов?", "options": ["iMac Pro", "Mac Studio", "Mac Pro", "Mac Max"], "correct_index": 2, "explanation": "Mac Pro — это модульный компьютер с максимальными возможностями расширения."},
+    {"question": "Какой iPhone стал первым с разъемом USB-C?", "options": ["iPhone 14", "iPhone 15", "iPhone 13", "iPhone 12"], "correct_index": 1, "explanation": "Вся линейка iPhone 15 перешла на USB-C под давлением европейских регуляторов."},
+    {"question": "Как называется технология в iPad, позволяющая работать в нескольких окнах одновременно?", "options": ["Multi Window", "Stage Manager", "Desk View", "App Center"], "correct_index": 1, "explanation": "Stage Manager приближает опыт работы на iPad к настольным компьютерам."},
+    {"question": "Как назывался первый цифровой фотоаппарат Apple, выпущенный в 1994 году?", "options": ["iCamera", "Apple QuickTake", "Apple Snap", "MacShot"], "correct_index": 1, "explanation": "QuickTake был одной из первых потребительских цифровых камер в мире."},
+    {"question": "Какой объем оперативной памяти (RAM) был в самом первом iPhone?", "options": ["64 МБ", "128 МБ", "256 МБ", "512 МБ"], "correct_index": 1, "explanation": "Первый iPhone имел всего 128 МБ оперативной памяти."},
+    {"question": "Как называется сервис Apple для просмотра сериалов и фильмов собственного производства?", "options": ["Apple TV", "Apple TV+", "Apple Video+", "iStream"], "correct_index": 1, "explanation": "Apple TV+ фокусируется исключительно на оригинальном контенте (Apple Originals)."},
+    {"question": "Как называются маленькие метки Apple для поиска вещей?", "options": ["iTag", "Apple Find", "AirTag", "FindMyTag"], "correct_index": 2, "explanation": "AirTag помогают находить ключи, кошельки и другие предметы через сеть Локатора."},
+    {"question": "Какая версия iPhone первой получила поддержку беспроводной зарядки?", "options": ["iPhone 7", "iPhone 8 / 8 Plus / X", "iPhone 6s", "iPhone 11"], "correct_index": 1, "explanation": "Стеклянная задняя панель в iPhone 8 и X позволила внедрить стандарт Qi."},
+    {"question": "Как называется технология автоматического переключения AirPods между устройствами?", "options": ["Fast Swap", "Smart Switch", "Automatic Device Switching", "iConnect"], "correct_index": 2, "explanation": "Наушники сами понимают, на каком устройстве вы начали слушать звук."},
+    {"question": "Как называется процессор в iPhone 14 Pro?", "options": ["A15 Bionic", "A16 Bionic", "A17 Pro", "M1 Mobile"], "correct_index": 1, "explanation": "A16 Bionic был эксклюзивом для моделей 14 Pro и 14 Pro Max."},
+    {"question": "Как называется технология дисплея в Apple Watch, которая всегда показывает время?", "options": ["Always-On Display", "Night View", "Power Display", "Smart Watch Face"], "correct_index": 0, "explanation": "Функция 'Всегда включено' появилась в Apple Watch Series 5."},
+    {"question": "Как назывался первый монитор Apple с разрешением 5K?", "options": ["Apple Cinema Display", "Thunderbolt Display", "Studio Display", "iMac 5K Display"], "correct_index": 2, "explanation": "Studio Display предлагает 27-дюймовую панель с разрешением 5K и встроенной камерой."},
+    {"question": "Как называется приложение Apple для создания музыки?", "options": ["GarageBand", "Music Maker", "Apple Studio", "iSound"], "correct_index": 0, "explanation": "GarageBand — мощная бесплатная цифровая звуковая рабочая станция для Mac и iOS."},
+    {"question": "Как называется функция Mac, позволяющая искать файлы и запускать приложения?", "options": ["Searcher", "Spotlight", "Finder", "Launchpad"], "correct_index": 1, "explanation": "Spotlight (значок лупы) индексирует всё содержимое вашего компьютера."},
+    {"question": "Какой iPhone первым получил ночной режим съемки (Night Mode)?", "options": ["iPhone X", "iPhone Xs", "iPhone 11", "iPhone 12"], "correct_index": 2, "explanation": "Ночной режим дебютировал в iPhone 11 благодаря новым алгоритмам обработки."},
+    {"question": "Как называется протокол Apple для передачи звука без потерь (Lossless)?", "options": ["ALAC", "FLAC", "AAC+", "AptX"], "correct_index": 0, "explanation": "Apple Lossless Audio Codec (ALAC) используется в Apple Music для высокого качества звука."},
+    {"question": "Как называется технология 'отката' системы на Mac с помощью внешнего диска?", "options": ["Back Machine", "Time Machine", "iBack", "File Vault"], "correct_index": 1, "explanation": "Time Machine делает ежечасные, ежедневные и еженедельные копии всей системы."},
+    {"question": "Как называлась первая мышь Apple с сенсорной поверхностью вместо кнопок?", "options": ["Mighty Mouse", "Magic Mouse", "Touch Mouse", "iScroll"], "correct_index": 1, "explanation": "Magic Mouse была представлена в 2009 году и поддерживала жесты Multi-Touch."},
+    {"question": "В каком году Apple представила гарнитуру смешанной реальности Vision Pro?", "options": ["2021", "2022", "2023", "2024"], "correct_index": 2, "explanation": "Vision Pro была анонсирована на конференции WWDC в июне 2023 года."},
+    {"question": "Как называется функция iPhone, переводящая голос в текст в реальном времени?", "options": ["Live Caption", "Диктовка (Dictation)", "Voice Type", "iScribe"], "correct_index": 1, "explanation": "Диктовка позволяет набирать текст голосом на многих языках, включая русский."},
+    {"question": "Как назывался первый планшет Apple, выпущенный в 1993 году (КПК)?", "options": ["Apple Newton", "eMate", "iPad Pro", "PowerPad"], "correct_index": 0, "explanation": "Newton MessagePad был одним из первых карманных персональных компьютеров (КПК)."},
+    {"question": "Как называется технология в iPhone, отслеживающая нажатия с разной силой (ныне заменена)?", "options": ["Haptic Touch", "Force Touch", "3D Touch", "Deep Press"], "correct_index": 2, "explanation": "3D Touch дебютировал в iPhone 6s и позволял открывать контекстные меню сильным нажатием."},
+    {"question": "Какое расширение имеют приложения для macOS?", "options": [".exe", ".app", ".dmg", ".pkg"], "correct_index": 1, "explanation": "Сами исполняемые файлы имеют расширение .app и являются папками-бандлами."},
+    {"question": "Как называется встроенный антивирус и система проверки приложений в macOS?", "options": ["Apple Shield", "Gatekeeper", "iSecure", "Mac Guard"], "correct_index": 1, "explanation": "Gatekeeper проверяет цифровую подпись разработчика перед запуском приложения."},
+    {"question": "Какой iPhone первым получил 120 Гц дисплей (ProMotion)?", "options": ["iPhone 12 Pro", "iPhone 13 Pro", "iPhone 14 Pro", "iPhone 11 Pro"], "correct_index": 1, "explanation": "Технология ProMotion с частотой обновления до 120 Гц появилась в линейке 13 Pro."},
+    {"question": "Как называется фирменный шрифт Apple, используемый во всех интерфейсах?", "options": ["Helvetica", "San Francisco", "Roboto", "Apple Sans"], "correct_index": 1, "explanation": "San Francisco был разработан Apple для лучшей читаемости на маленьких экранах (Watch)."},
+    {"question": "Как называется технология объединения нескольких дисков в один на старых Mac?", "options": ["Hybrid Drive", "Fusion Drive", "Double Drive", "iRAID"], "correct_index": 1, "explanation": "Fusion Drive сочетал быстрый SSD и емкий HDD в один логический том."},
+    {"question": "Как называется приложение для управления всеми паролями в экосистеме Apple?", "options": ["iPassword", "Ключи (Keychain / Пароли)", "SafeBox", "Apple ID Security"], "correct_index": 1, "explanation": "Связка ключей iCloud синхронизирует все логины и пароли между устройствами."},
+    {"question": "В каком городе Apple ежегодно проводит конференцию для разработчиков WWDC?", "options": ["Сан-Франциско / Купертино", "Нью-Йорк", "Чикаго", "Лос-Анджелес"], "correct_index": 0, "explanation": "Конференция обычно проходит в Калифорнии, в Apple Park или выставочных центрах поблизости."},
+    {"question": "Как называется режим в iPhone, отключающий уведомления и звонки?", "options": ["Silent Mode", "Фокусирование (Focus / Не беспокоить)", "Sleep Mode", "Airplane Mode"], "correct_index": 1, "explanation": "Режимы фокусирования позволяют настраивать, кто и какие приложения могут вас беспокоить."},
+    {"question": "Как называется технология в iPhone, позволяющая создавать 3D-модели объектов?", "options": ["LiDAR Scan", "Object Capture", "3D Photo", "Depth Link"], "correct_index": 1, "explanation": "Object Capture позволяет с помощью камеры iPhone быстро создавать 3D-модели для AR/VR."},
+    {"question": "Какой iPhone первым получил поддержку двух SIM-карт (включая eSIM)?", "options": ["iPhone X", "iPhone Xs / Xr", "iPhone 11", "iPhone 8"], "correct_index": 1, "explanation": "Начиная с Xs и Xr, iPhone поддерживают физическую SIM + цифровую eSIM (или 2 физические в Китае)."},
+    {"question": "Как назывался первый монитор Apple, выпущенный в 1980 году?", "options": ["Apple Monitor III", "Apple Vision", "Studio Display", "Cinema Display"], "correct_index": 0, "explanation": "Apple Monitor III был предназначен для компьютера Apple III."},
+    {"question": "Как называется приложение для управления наушниками AirPods на Mac?", "options": ["AirPods Control", "Настройки звука / Bluetooth", "iHeads", "Beats App"], "correct_index": 1, "explanation": "Отдельного приложения нет, все настройки встроены в системные параметры звука и Bluetooth."},
+    {"question": "Как называется функция iPhone, позволяющая распознавать текст на фото?", "options": ["Text Grab", "Live Text (Живой текст)", "OCR Mobile", "iRead"], "correct_index": 1, "explanation": "Live Text позволяет копировать, переводить и искать текст прямо с фотографий и видео."},
+    {"question": "Как называется режим энергосбережения в iPhone?", "options": ["Battery Save", "Режим низкого энергопотребления (Low Power Mode)", "Eco Mode", "iPower"], "correct_index": 1, "explanation": "Этот режим отключает фоновые процессы и снижает яркость для экономии заряда."},
+    {"question": "Какой iPhone был представлен как 'самый тонкий смартфон в мире' на момент выхода?", "options": ["iPhone 4", "iPhone 5", "iPhone 6", "iPhone SE"], "correct_index": 1, "explanation": "iPhone 5 имел толщину всего 7.6 мм."},
+    {"question": "Как называется функция Mac, позволяющая видеть все открытые окна сразу?", "options": ["App View", "Mission Control", "Expose", "Launch Center"], "correct_index": 1, "explanation": "Mission Control (F3) показывает все запущенные приложения и рабочие столы."},
+    {"question": "Как называется технология Apple для защиты пользовательских данных в браузере?", "options": ["Incognito Pro", "Intelligent Tracking Prevention (ITP)", "Safe Surf", "Apple Shield"], "correct_index": 1, "explanation": "ITP в Safari блокирует трекеры, которые пытаются следить за вами в интернете."},
+    {"question": "Как называется встроенный PDF-ридер и просмотрщик картинок в macOS?", "options": ["QuickLook", "Просмотр (Preview)", "iRead", "Adobe Lite"], "correct_index": 1, "explanation": "Preview — это мощный инструмент для базового редактирования фото и PDF."},
+    {"question": "Как называется технология передачи данных между устройствами Apple на сверхблизком расстоянии?", "options": ["NFC+", "Ultra Wideband (чип U1/U2)", "Bluetooth 6", "iLink"], "correct_index": 1, "explanation": "Чип U1 обеспечивает точный поиск устройств и передачу данных при поднесении устройств друг к другу."},
+    {"question": "В каком году Apple официально сменила название с 'Apple Computer Inc.' на 'Apple Inc.'?", "options": ["2005", "2007", "2009", "2011"], "correct_index": 1, "explanation": "Смена названия в 2007 году ознаменовала переход от компьютеров к бытовой электронике."},
+    {"question": "Как называется самый большой iMac, который когда-либо выпускала Apple?", "options": ["24 дюйма", "27 дюймов", "30 дюймов", "32 дюйма"], "correct_index": 1, "explanation": "Модель на 27 дюймов была флагманом линейки iMac до 2022 года."},
+    {"question": "Как называется сервис Apple для новостей и журналов?", "options": ["Apple News", "iNews", "Apple Press", "Magazines+"], "correct_index": 0, "explanation": "Apple News собирает статьи из ведущих изданий в одном приложении."},
+    {"question": "Как называется функция iPhone, которая автоматически вызывает помощь при аварии?", "options": ["Crash Detection (Распознавание аварий)", "Emergency Call+", "Safe Driving", "iRescue"], "correct_index": 0, "explanation": "Функция появилась в iPhone 14 и использует акселерометр и гироскоп для обнаружения ДТП."},
+    {"question": "Как называется технология экрана в iPhone 13 Pro и новее (меняющаяся частота)?", "options": ["LTPO", "OLED Pro", "ProMotion", "Smooth Display"], "correct_index": 2, "explanation": "ProMotion позволяет экрану менять частоту от 10 Гц до 120 Гц для плавности и экономии энергии."},
+    {"question": "Как назывался первый продукт Apple, работающий на процессоре Intel?", "options": ["iMac G5", "iMac (Core Duo)", "MacBook Pro", "Mac mini"], "correct_index": 1, "explanation": "В 2006 году iMac стал первым компьютером Apple, перешедшим на чипы Intel."},
+    {"question": "Как называется приложение для управления всеми подписками и покупками Apple ID?", "options": ["App Store / Профиль", "iSub", "Apple Account", "iPay Center"], "correct_index": 0, "explanation": "Все подписки управляются через настройки учетной записи в App Store или системных настройках."},
+    {"question": "Как называется технология Apple для защиты экрана iPhone?", "options": ["Gorilla Glass", "Ceramic Shield", "Sapphire Glass", "Diamond Shield"], "correct_index": 1, "explanation": "Ceramic Shield, представленный в iPhone 12, значительно повысил прочность экрана при падении."},
+    {"question": "Как называется функция iPad, позволяющая использовать его как второй монитор для Mac?", "options": ["Dual Screen", "Sidecar", "AirDisplay", "MacScreen"], "correct_index": 1, "explanation": "Sidecar работает как по проводу, так и через Wi-Fi."},
+    {"question": "Как называлась первая социальная сеть Apple, встроенная в iTunes?", "options": ["iSocial", "Ping", "Apple Connect", "Music Friends"], "correct_index": 1, "explanation": "Ping была запущена в 2010 году и закрыта через два года из-за низкой популярности."},
+    {"question": "Как называется приложение для автоматизации задач в iOS и macOS?", "options": ["Apple Scripts", "Команды (Shortcuts)", "iFlow", "Macro Pad"], "correct_index": 1, "explanation": "Приложение 'Команды' позволяет создавать цепочки действий для экономии времени."},
+    {"question": "Как называется технология Apple для работы с дополненной реальностью?", "options": ["iAR", "Apple VR", "ARKit", "Reality Engine"], "correct_index": 2, "explanation": "ARKit предоставляет разработчикам инструменты для создания AR-приложений для iPhone и iPad."},
+    {"question": "Как называется функция iPhone, позволяющая быстро перенести данные со старого устройства на новое?", "options": ["iMigrate", "Быстрое начало (Quick Start)", "Easy Transfer", "Cloud Restore"], "correct_index": 1, "explanation": "Нужно просто положить два iPhone рядом, и данные перенесутся по воздуху."},
+    {"question": "Как назывался первый iPod с сенсорным экраном?", "options": ["iPod Nano", "iPod Touch", "iPod Video", "iPod Classic"], "correct_index": 1, "explanation": "iPod Touch был представлен вскоре после первого iPhone в 2007 году."},
+    {"question": "Как называется технология в iPhone 15 Pro, ускоряющая передачу данных по кабелю?", "options": ["Thunderbolt 4", "USB 3 (до 10 Гбит/с)", "Lightning Pro", "USB-C Max"], "correct_index": 1, "explanation": "Благодаря новому контроллеру в чипе A17 Pro, 15 Pro поддерживает скорости USB 3."},
+    {"question": "Как называется приложение Apple для здоровья?", "options": ["iHealth", "Здоровье (Health)", "Fitness+", "Body Guard"], "correct_index": 1, "explanation": "Приложение 'Здоровье' собирает данные со всех датчиков iPhone и Apple Watch."},
+    {"question": "Как называется функция iPhone, позволяющая видеть уведомления, перевернув его экраном вниз?", "options": ["Silent View", "Always-on Display", "Отсутствует (iPhone не имеет такой специфической функции)", "Flash Alert"], "correct_index": 2, "explanation": "В отличие от некоторых Android-смартфонов, у iPhone нет специальной функции для этого, кроме обычного бесшумного режима."},
+    {"question": "Как называется приложение для создания презентаций от Apple?", "options": ["PowerPoint", "Keynote", "iSlides", "Apple Presenter"], "correct_index": 1, "explanation": "Стив Джобс использовал Keynote для всех своих легендарных презентаций."},
+    {"question": "Как называется технология 'обрезки' фото в iOS 16 (отделение объекта от фона)?", "options": ["Magic Cut", "Visual Look Up (Поднятие объекта)", "Smart Eraser", "Auto BG"], "correct_index": 1, "explanation": "Достаточно зажать палец на объекте в приложении 'Фото', чтобы 'оторвать' его от фона."},
+    {"question": "Как называется сервис Apple для трансляции экрана на Apple TV?", "options": ["AirView", "Screen Mirroring (Повтор экрана)", "iCast", "Apple Stream"], "correct_index": 1, "explanation": "Повтор экрана позволяет видеть всё, что происходит на iPhone, на большом телевизоре."},
+    {"question": "Как называется технология в Apple Watch, которая чувствует силу нажатия на экран (удалена)?", "options": ["Haptic Touch", "Force Touch", "3D Press", "Deep Touch"], "correct_index": 1, "explanation": "Force Touch впервые появился именно в Apple Watch, а позже пришел на Mac и iPhone."},
+    {"question": "Как называется функция Mac, позволяющая быстро просмотреть файл, нажав пробел?", "options": ["Fast Look", "Quick Look (Быстрый просмотр)", "Space View", "Easy Preview"], "correct_index": 1, "explanation": "Быстрый просмотр — одна из самых удобных функций macOS для работы с файлами."},
+    {"question": "Как называется технология Apple для защиты глаз от синего света вечером?", "options": ["Blue Shield", "Night Shift", "Dark Mode", "Eye Care"], "correct_index": 1, "explanation": "Night Shift делает цвета экрана более теплыми после захода солнца."},
+    {"question": "Как назывался первый ноутбук Apple с экраном Retina?", "options": ["MacBook Air 2010", "MacBook Pro 2012", "MacBook 2015", "MacBook Pro 2016"], "correct_index": 1, "explanation": "15-дюймовый MacBook Pro в середине 2012 года стал первым ноутбуком с Retina-дисплеем."},
+    {"question": "Как называется функция iPhone, позволяющая оплачивать покупки в приложениях лицом или пальцем?", "options": ["iBuy", "Apple Pay / Биометрия", "Face Confirmation", "Quick Confirm"], "correct_index": 1, "explanation": "Face ID или Touch ID подтверждают вашу личность при оплате через Apple Pay."},
+    {"question": "Как называется технология в Apple Watch, измеряющая уровень кислорода в крови?", "options": ["OxyWatch", "Blood Oxygen (Кислород в крови)", "Pulse Oximeter", "iBreathe"], "correct_index": 1, "explanation": "Датчик кислорода появился в Apple Watch Series 6."},
+    {"question": "Как называется режим 'картинка в картинке' на iPhone?", "options": ["Multi View", "Picture in Picture (PiP)", "Small Screen", "Dual Window"], "correct_index": 1, "explanation": "PiP позволяет смотреть видео в маленьком окне поверх других приложений."},
+    {"question": "Как называется встроенный в macOS архиватор?", "options": ["iZip", "Утилита архивирования (Archive Utility)", "MacRAR", "Apple Unzip"], "correct_index": 1, "explanation": "Она автоматически распаковывает .zip файлы при двойном клике."},
+    {"question": "Какой iPhone первым получил портретное освещение (Portrait Lighting)?", "options": ["iPhone 7 Plus", "iPhone 8 Plus / X", "iPhone Xs", "iPhone 11"], "correct_index": 1, "explanation": "Портретное освещение использует ИИ для имитации студийного света на фото."},
+    {"question": "Как называется технология Apple для работы с текстом и кодом (движок Safari)?", "options": ["Gecko", "Chromium", "WebKit", "Apple Engine"], "correct_index": 2, "explanation": "WebKit — это проект с открытым исходным кодом, начатый Apple на базе KHTML."},
+    {"question": "Как называется функция iPhone, позволяющая найти его, даже если он выключен?", "options": ["Offline Find", "Сеть Локатора (Find My Network)", "Power Search", "iBeacon"], "correct_index": 1, "explanation": "Благодаря чипам U1/U2 и резервному питанию, iPhone остается видимым для сети Локатора некоторое время после выключения."},
+    {"question": "Как называется приложение для управления шрифтами на Mac?", "options": ["Font Manager", "Шрифты (Font Book)", "iType", "Apple Fonts"], "correct_index": 1, "explanation": "Font Book позволяет устанавливать, просматривать и удалять шрифты в системе."},
+    {"question": "Как называется технология Apple для беспроводного подключения CarPlay?", "options": ["Wi-Fi Car", "Wireless CarPlay", "AirCar", "iDrive Wireless"], "correct_index": 1, "explanation": "CarPlay может работать как через кабель, так и по Bluetooth/Wi-Fi в современных авто."},
+    {"question": "Как называется функция 'экранного времени' в iOS?", "options": ["Time Limit", "Экранное время (Screen Time)", "iControl", "Usage Stats"], "correct_index": 1, "explanation": "Screen Time помогает отслеживать использование приложений и устанавливать лимиты для детей."},
+    {"question": "Как называется режим в камере iPhone 13 и новее для эффектной видеосъемки?", "options": ["Movie Mode", "Киноэффект (Cinematic mode)", "Director Cam", "ProVideo"], "correct_index": 1, "explanation": "Киноэффект автоматически переводит фокус с одного объекта на другой во время съемки."},
+    {"question": "Как называется технология 'защищенного' почтового адреса от Apple?", "options": ["Mail Shield", "Скрыть e-mail (Hide My Email)", "Secure Mail", "iAnonymous"], "correct_index": 1, "explanation": "Hide My Email создает уникальные случайные адреса, которые пересылают почту на ваш основной ящик."},
+    {"question": "Как называется приложение Apple для тренировок по подписке?", "options": ["iFitness", "Fitness+", "Apple Workout", "Gym Anywhere"], "correct_index": 1, "explanation": "Fitness+ предлагает видеоуроки от профессиональных тренеров, синхронизированные с Apple Watch."},
+    {"question": "Как называется технология в iPhone 15 Pro, позволяющая записывать видео прямо на внешний диск?", "options": ["Direct Save", "USB-C Recording / ProRes to External Storage", "iRecord Pro", "Fast Video"], "correct_index": 1, "explanation": "Благодаря USB 3, профессионалы могут писать тяжелое ProRes 4K/60fps видео сразу на SSD."},
+    {"question": "Как называется приложение Apple для заметок и совместной работы на бесконечной доске?", "options": ["iBoard", "Freeform (Постановщик)", "Apple Sketch", "Magic Paper"], "correct_index": 1, "explanation": "Freeform — это гибкий холст для творчества и планирования."},
+    {"question": "В каком году Apple представила свой первый 64-битный процессор в смартфоне (A7)?", "options": ["2011", "2012", "2013", "2014"], "correct_index": 2, "explanation": "iPhone 5s с чипом A7 стал первым в мире 64-битным смартфоном."},
+    {"question": "Как называется функция iPhone, зачитывающая вслух имя звонящего?", "options": ["Voice Caller", "Объявление вызовов (Announce Calls)", "iSpeak Who", "Speak Name"], "correct_index": 1, "explanation": "Это удобно, когда вы в наушниках или за рулем."},
+    {"question": "Как называется встроенный в iOS и macOS парольный менеджер (новое отдельное приложение)?", "options": ["Keychain", "Пароли (Passwords)", "Secure Safe", "Apple Pass"], "correct_index": 1, "explanation": "В iOS 18 менеджер паролей стал отдельным полноценным приложением."},
+    {"question": "Как называется технология Apple для улучшения качества звука при звонках в шумных местах?", "options": ["Voice Isolation (Изоляция голоса)", "Noise Clear", "Smart Mic", "iVoice"], "correct_index": 0, "explanation": "Изоляция голоса отсекает фоновые шумы, выделяя вашу речь."},
+    {"question": "Как называется функция в Apple Watch, обнаруживающая падение владельца?", "options": ["Fall Detection (Распознавание падения)", "Safety Watch", "iFall", "Emergency Drop"], "correct_index": 0, "explanation": "Если после падения человек не двигается, часы сами вызовут экстренные службы."},
+    {"question": "Какой iPhone стал последним с кнопкой 'Домой' (не считая серии SE)?", "options": ["iPhone 7", "iPhone 8 / 8 Plus", "iPhone Xs", "iPhone 6s"], "correct_index": 1, "explanation": "iPhone 8 и 8 Plus были последними флагманами с классической кнопкой (вышли одновременно с iPhone X)."},
+    {"question": "Как называется технология в iPhone, которая делает селфи-камеру 'умной' (регулировка угла)?", "options": ["Smart Selfie", "Center Stage (В центре внимания)", "Auto Angle", "iFocus"], "correct_index": 1, "explanation": "Center Stage (обычно в iPad) удерживает вас в кадре при перемещении во время звонка."},
+    {"question": "Как называется функция iPhone, позволяющая слушать, что происходит в другой комнате (через AirPods)?", "options": ["Spy Mode", "Live Listen (Live-прослушивание)", "AirStream", "Remote Mic"], "correct_index": 1, "explanation": "Live Listen превращает iPhone в микрофон, который передает звук на наушники."},
+    {"question": "Как называется приложение Apple для чтения электронных книг?", "options": ["iRead", "Книги (Books)", "Apple Library", "iBookshelf"], "correct_index": 1, "explanation": "Ранее называлось iBooks, теперь просто 'Книги'."},
+    {"question": "Как называется технология 'быстрого' переключения между AirPods и Mac/iPhone (через iCloud)?", "options": ["Cloud Sync", "Automatic Switching", "Smart Connect", "iLink"], "correct_index": 1, "explanation": "Ваши наушники 'знают' все ваши устройства и переключаются на то, которое сейчас играет звук."},
+    {"question": "Как называется функция Mac, позволяющая удаленно управлять другим Mac?", "options": ["Remote Desktop", "Общий экран (Screen Sharing)", "iControl", "Mac Access"], "correct_index": 1, "explanation": "Это встроенная возможность macOS для поддержки или совместной работы."},
+    {"question": "Как называется технология Apple для защиты от кражи (блокировка по Apple ID)?", "options": ["Apple Lock", "Activation Lock (Блокировка активации)", "iSecure", "Anti-Theft"], "correct_index": 1, "explanation": "Без пароля от Apple ID устройство невозможно активировать заново даже после сброса."},
+    {"question": "Как называется функция 'умного' поиска по фотографиям в iOS?", "options": ["Photo Finder", "Visual Look Up", "iScan", "Smart Search"], "correct_index": 1, "explanation": "Она распознает растения, породы собак, достопримечательности и символы на фото."},
+    {"question": "Как называется технология Apple для улучшения качества фото при слабом свете (стекинг кадров)?", "options": ["Smart HDR", "Deep Fusion", "Night Mode+", "iPicture"], "correct_index": 1, "explanation": "Deep Fusion (называемая 'программной нейрокухней') объединяет несколько экспозиций на уровне пикселей."},
+    {"question": "Как называется функция в iOS, позволяющая спрятать личные фото в скрытый альбом?", "options": ["Hidden Box", "Скрытые (Hidden album)", "Photo Lock", "iPrivate"], "correct_index": 1, "explanation": "Альбом 'Скрытые' можно защитить паролем, Face ID или Touch ID."},
+    {"question": "Как называется технология Apple для синхронизации рабочего стола между всеми Mac?", "options": ["iCloud Desktop & Documents", "Desktop Sync", "MacCloud", "AirDesktop"], "correct_index": 0, "explanation": "Все файлы на рабочем столе одного Mac автоматически появляются на другом через iCloud."},
+    {"question": "Как называется режим 'отладки' в Safari для разработчиков?", "options": ["Dev Tools", "Меню 'Разработка' (Develop menu)", "Safari Pro", "Web Debug"], "correct_index": 1, "explanation": "Его нужно включить в настройках, после чего станут доступны веб-инспектор и другие инструменты."},
+    {"question": "Как называется функция в Apple Watch, которая напоминает о необходимости помыть руки?", "options": ["Hand Wash Timer", "Soap Reminder", "Мытье рук (Handwashing)", "iClean"], "correct_index": 2, "explanation": "Часы распознают звук воды и движения рук, запуская 20-секундный таймер."},
+    {"question": "Как называется технология Apple для создания 'цифрового наследия' (передача данных после смерти)?", "options": ["Legacy Contact (Цифровой наследник)", "AfterLife Access", "iInherit", "Data Transfer"], "correct_index": 0, "explanation": "Вы можете выбрать доверенных лиц, которые получат доступ к вашему iCloud в случае смерти."},
+    {"question": "Как называется функция iPhone, позволяющая использовать его как ключ для автомобиля?", "options": ["iKey", "CarKey", "Apple Drive", "Auto Access"], "correct_index": 1, "explanation": "CarKey работает через NFC или чип U1/U2 на поддерживаемых автомобилях."},
+    {"question": "Как называется технология Apple для 'плавного' перемещения мыши между iPad и Mac?", "options": ["Universal Control (Универсальное управление)", "Sidecar", "AirMouse", "iBridge"], "correct_index": 0, "explanation": "Universal Control позволяет использовать одну клавиатуру и мышь для управления тремя устройствами рядом."},
+    {"question": "Как называется технология в iPhone, позволяющая совершать экстренные вызовы через спутник?", "options": ["StarLink Mobile", "Emergency SOS via Satellite", "Space Connect", "iSatellite"], "correct_index": 1, "explanation": "Функция работает там, где нет сотовой связи и Wi-Fi (пока доступна не во всех странах)."}
 ]
