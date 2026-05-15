@@ -34,6 +34,7 @@ async def cmd_rules(message: Message):
         "После остановки сбора:\n"
         "❌ играть и оплачивать нельзя\n"
         "✅ можно посмотреть свои билеты, лидерборд и правила\n\n"
+        "Лидерборд отображает 20 лучших участников.\n\n"
         "Розыгрыш проводится честно через генератор случайных чисел random.org.\n\n"
         "Номер билета присваивается рондомно.\n\n"
         "Прямой эфир с определением победителя состоится в канале @mozgo_boy — дата и время будут объявлены там же.\n\n"
@@ -54,12 +55,13 @@ async def cmd_my_tickets(message: Message):
 
 @router.message(F.text == "🏆 Лидерборд")
 async def cmd_leaderboard(message: Message):
-    leaders = await get_leaderboard()
+    # Отображаем топ-20 лидеров
+    leaders = await get_leaderboard(limit=20)
     if not leaders:
         await message.answer("Лидерборд пока пуст.")
         return
 
-    text = "🏆 <b>Топ участников по количеству билетов:</b>\n\n"
+    text = "🏆 <b>Топ-20 участников по количеству билетов:</b>\n\n"
     for i, (username, full_name, count) in enumerate(leaders, 1):
         name = username if username else full_name
         text += f"{i}. {name} — {count} бил.\n"

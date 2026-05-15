@@ -149,7 +149,7 @@ async def finish_quiz_session(user_id):
         await db.execute("UPDATE quiz_sessions SET is_active = 0 WHERE user_id = ?", (user_id,))
         await db.commit()
 
-async def get_leaderboard(limit=10):
+async def get_leaderboard(limit=20):
     async with aiosqlite.connect(DB_PATH) as db:
         # Leaderboard based on number of tickets
         async with db.execute("""
