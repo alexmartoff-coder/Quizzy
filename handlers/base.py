@@ -10,7 +10,7 @@ router = Router()
 async def cmd_start(message: Message):
     await add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
     await message.answer(
-        "Добро пожаловать в квиз @prekrasenday_bot!\n\n"
+        "Добро пожаловать в квиз @googlestop_bot!\n\n"
         "Участвуй в розыгрыше iPhone 17. Один билет стоит 99 ₽. "
         "За хороший результат в квизе можно получить до +3 бонусных билетов!",
         reply_markup=await get_main_menu_keyboard()
