@@ -46,6 +46,19 @@ async def init_db():
                 value TEXT
             )
         """)
+        # YOOKASSA PAYMENT INTEGRATION
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                amount INTEGER,
+                payload TEXT,
+                telegram_payment_charge_id TEXT,
+                provider_payment_charge_id TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
 
         # Таблица доступных номеров для рандомной выдачи
         await db.execute("""
@@ -195,4 +208,13 @@ async def clear_user_seen_questions(user_id):
     """Сброс увиденных вопросов (например, если пул закончился)."""
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM user_seen_questions WHERE user_id = ?", (user_id,))
+        await db.commit()
+
+# YOOKASSA PAYMENT INTEGRATION
+async def log_payment(user_id, amount, payload, telegram_id, provider_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO payments (user_id, amount, payload, telegram_payment_charge_id, provider_payment_charge_id)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, amount, payload, telegram_id, provider_id))
         await db.commit()

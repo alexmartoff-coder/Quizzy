@@ -1,8 +1,8 @@
 from aiogram import Router, F
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice, CallbackQuery
 from aiogram.filters import Command
-from config import QUIZ_PRICE, PAYMENT_PROVIDER_TOKEN, TICKET_LIMIT, BOT_TOKEN, CHANNEL_ID, OWNER_ID
-from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection
+from config import QUIZ_PRICE, YOOKASSA_PROVIDER_TOKEN, PAYMENT_TEST_MODE, TICKET_LIMIT, BOT_TOKEN, CHANNEL_ID, OWNER_ID
+from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection, log_payment
 from keyboards.menu import get_payment_keyboard, get_start_quiz_keyboard
 from datetime import datetime
 from aiogram import Bot
@@ -69,7 +69,8 @@ async def cmd_play(message: Message):
         )
         return
 
-    prefix = "<b>(Тестовый режим)</b> "
+    # YOOKASSA PAYMENT INTEGRATION
+    prefix = "<b>(Тестовый режим)</b> " if PAYMENT_TEST_MODE else ""
 
     await message.answer(
         f"{prefix}🎁 <b>Участвуй в розыгрыше iPhone 17!</b>\n\n"
@@ -87,9 +88,22 @@ async def process_pay(callback: CallbackQuery):
         await callback.answer("Сбор билетов завершен!", show_alert=True)
         return
 
-    await simulate_successful_payment(callback.message, callback.from_user.id)
-    await callback.answer()
-    return
+    # YOOKASSA PAYMENT INTEGRATION
+    if PAYMENT_TEST_MODE:
+        await simulate_successful_payment(callback.message, callback.from_user.id)
+        await callback.answer()
+    else:
+        await callback.message.answer_invoice(
+            title="Билет для участия в розыгрыше",
+            description="1 билет + доступ к квизу. После оплаты запустится квиз.",
+            payload="ticket_payment",
+            provider_token=YOOKASSA_PROVIDER_TOKEN,
+            currency="RUB",
+            prices=[LabeledPrice(label="Участие в розыгрыше", amount=QUIZ_PRICE * 100)],
+            start_parameter="iphone17_quiz",
+            is_flexible=False
+        )
+        await callback.answer()
 
 @router.pre_checkout_query()
 async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
@@ -100,6 +114,16 @@ async def process_successful_payment(message: Message):
     user_id = message.from_user.id
     # Убедимся, что пользователь есть в базе
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
+
+    # YOOKASSA PAYMENT INTEGRATION
+    sp = message.successful_payment
+    await log_payment(
+        user_id,
+        sp.total_amount // 100,
+        sp.invoice_payload,
+        sp.telegram_payment_charge_id,
+        sp.provider_payment_charge_id
+    )
 
     issued = await issue_random_tickets(user_id, 1, "base")
     if not issued:
