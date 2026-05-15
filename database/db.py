@@ -151,13 +151,18 @@ async def finish_quiz_session(user_id):
 
 async def get_leaderboard(limit=20):
     async with aiosqlite.connect(DB_PATH) as db:
-        # Leaderboard based on number of tickets
+        # Leaderboard based on number of tickets (base + bonus)
         async with db.execute("""
-            SELECT u.username, u.full_name, COUNT(t.id) as ticket_count
+            SELECT
+                u.username,
+                u.full_name,
+                COUNT(t.id) as total_count,
+                SUM(CASE WHEN t.type = 'base' THEN 1 ELSE 0 END) as base_count,
+                SUM(CASE WHEN t.type = 'bonus' THEN 1 ELSE 0 END) as bonus_count
             FROM users u
             JOIN tickets t ON u.user_id = t.user_id
             GROUP BY u.user_id
-            ORDER BY ticket_count DESC
+            ORDER BY total_count DESC
             LIMIT ?
         """, (limit,)) as cursor:
             return await cursor.fetchall()

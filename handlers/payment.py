@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice, CallbackQuery
 from aiogram.filters import Command
 from config import QUIZ_PRICE, PAYMENT_PROVIDER_TOKEN, TICKET_LIMIT, BOT_TOKEN, CHANNEL_ID, OWNER_ID
-from database.db import issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection
+from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection
 from keyboards.menu import get_payment_keyboard, get_start_quiz_keyboard
 from datetime import datetime
 from aiogram import Bot
@@ -56,6 +56,9 @@ async def cmd_testpay(message: Message):
 
 @router.message(F.text == "🎁 Играть в Квиз за iPhone 17")
 async def cmd_play(message: Message):
+    # Убедимся, что пользователь есть в базе (на случай если пропустил /start)
+    await add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
+
     if await is_collection_closed():
         await message.answer(
             "🎉 <b>Сбор билетов завершён досрочно!</b>\n\n"
@@ -95,6 +98,9 @@ async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
 @router.message(F.successful_payment)
 async def process_successful_payment(message: Message):
     user_id = message.from_user.id
+    # Убедимся, что пользователь есть в базе
+    await add_user(user_id, message.from_user.username, message.from_user.full_name)
+
     issued = await issue_random_tickets(user_id, 1, "base")
     if not issued:
         await message.answer("Извините, билеты закончились!")

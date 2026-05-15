@@ -62,9 +62,9 @@ async def cmd_leaderboard(message: Message):
         return
 
     text = "🏆 <b>Топ-20 участников по количеству билетов:</b>\n\n"
-    for i, (username, full_name, count) in enumerate(leaders, 1):
+    for i, (username, full_name, total, base, bonus) in enumerate(leaders, 1):
         name = username if username else full_name
-        text += f"{i}. {name} — {count} бил.\n"
+        text += f"{i}. {name} — <b>{total}</b> бил. ({base} купл. + {bonus} бонус.)\n"
 
     await message.answer(text, parse_mode="HTML")
 
