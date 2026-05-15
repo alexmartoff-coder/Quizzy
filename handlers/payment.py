@@ -1,11 +1,10 @@
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice, CallbackQuery
 from aiogram.filters import Command
-from config import YOOKASSA_PROVIDER_TOKEN, TICKET_LIMIT, CHANNEL_ID, OWNER_ID, QUIZ_PRICE
+from config import YOOKASSA_PROVIDER_TOKEN, TICKET_LIMIT, CHANNEL_ID, OWNER_ID
 from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection, log_payment
 from keyboards.menu import get_payment_keyboard, get_start_quiz_keyboard
 import logging
-import sys
 
 router = Router()
 
@@ -53,51 +52,46 @@ async def process_pay(callback: CallbackQuery):
         await callback.answer("Сбор билетов завершен!", show_alert=True)
         return
 
-    # YOOKASSA TEST INTEGRATION: Диагностика
+    # 1. Немедленно снимаем прелоадер с кнопки
+    await callback.answer()
+
+    # 2. Сообщение о начале формирования счета
+    await callback.message.answer("🧾 Формируем счёт на оплату...")
+
     logging.info(f"PAYMENT_START: User {callback.from_user.id}")
-    await callback.answer() # Снимаем прелоадер с кнопки немедленно
-
-    status_msg = await callback.message.answer("⏳ Формируем счёт...")
-
-    if not YOOKASSA_PROVIDER_TOKEN or YOOKASSA_PROVIDER_TOKEN == "YOUR_YOOKASSA_TOKEN":
-        logging.error("ERROR: YOOKASSA_PROVIDER_TOKEN is not set or invalid!")
-        await status_msg.edit_text("❌ Ошибка конфигурации платежей. Обратитесь в поддержку.")
-        return
 
     try:
-        logging.info(f"Sending invoice with token: {YOOKASSA_PROVIDER_TOKEN[:5]}...")
+        # 3. Минимальный набор параметров для send_invoice
         await callback.message.answer_invoice(
             title="Билет участия в розыгрыше",
-            description=f"1 билет + доступ к квизу за {QUIZ_PRICE} RUB",
+            description="1 билет + доступ к квизу",
             provider_token=YOOKASSA_PROVIDER_TOKEN,
             currency="RUB",
-            prices=[LabeledPrice(label="Билет", amount=QUIZ_PRICE * 100)],
-            payload="ticket_purchase_v1",
-            start_parameter="ticket",
-            provider_data='{"test": true}'
+            prices=[LabeledPrice(label="Билет", amount=9900)],
+            payload="ticket_purchase_v1"
         )
-        await status_msg.delete()
         logging.info("PAYMENT_INVOICE_SENT_SUCCESS")
     except Exception as e:
         logging.error(f"ERROR send_invoice: {e}")
-        print("ERROR send_invoice:", e, file=sys.stderr)
-        await status_msg.edit_text(f"❌ Ошибка оплаты: {e}")
+        await callback.message.answer(f"❌ Ошибка оплаты: {e}")
 
+# 4. ОБЯЗАТЕЛЬНЫЙ ОБРАБОТЧИК pre_checkout_query (чтобы форма оплаты открылась)
 @router.pre_checkout_query()
-async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
-    # YOOKASSA TEST INTEGRATION
-    logging.info(f"PRE_CHECKOUT: {pre_checkout_query.id} from {pre_checkout_query.from_user.id}")
+async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     await pre_checkout_query.answer(ok=True)
+    logging.info(f"PRE_CHECKOUT_QUERY accepted for user {pre_checkout_query.from_user.id}")
+    print(f"PRE_CHECKOUT_QUERY accepted for user {pre_checkout_query.from_user.id}")
 
+# 5. ОБРАБОТЧИК successful_payment
 @router.message(F.successful_payment)
-async def process_successful_payment(message: Message):
+async def successful_payment(message: Message):
     user_id = message.from_user.id
-    logging.info(f"SUCCESSFUL_PAYMENT: {user_id}")
+    logging.info(f"SUCCESSFUL_PAYMENT_RECEIVED: {user_id}")
 
-    # Убедимся, что пользователь есть в базе
+    # Регистрация
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
 
-    # YOOKASSA TEST INTEGRATION
+    # Логирование
     sp = message.successful_payment
     await log_payment(
         user_id,
@@ -107,11 +101,13 @@ async def process_successful_payment(message: Message):
         sp.provider_payment_charge_id
     )
 
+    # Выдача билета
     issued = await issue_random_tickets(user_id, 1, "base")
     if not issued:
-        await message.answer("✅ Оплата прошла успешно! Но билеты закончились. Свяжитесь с поддержкой.")
+        await message.answer("✅ Оплата прошла успешно! Но билеты закончились.")
         return
 
+    # Активация квиза
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
 
     await message.answer(
@@ -119,7 +115,7 @@ async def process_successful_payment(message: Message):
         reply_markup=get_start_quiz_keyboard()
     )
 
-    # Проверка лимита билетов
+    # Лимит
     total_tickets = await get_total_tickets_count()
     if total_tickets >= TICKET_LIMIT:
         if not await is_collection_closed():
@@ -127,11 +123,7 @@ async def process_successful_payment(message: Message):
             try:
                 await message.bot.send_message(
                     chat_id=CHANNEL_ID,
-                    text="🔥 <b>СБОР БИЛЕТОВ ЗАВЕРШЁН!</b>\n\n"
-                         "Мы достигли лимита в 2500 билетов раньше срока.\n"
-                         "Спасибо всем, кто принял участие!\n\n"
-                         "Дата и время прямого розыгрыша будет объявлена в ближайшие часы.",
+                    text="🔥 <b>СБОР БИЛЕТОВ ЗАВЕРШЁН!</b>\n\nЛимит в 2500 билетов достигнут. Всем спасибо!",
                     parse_mode="HTML"
                 )
-            except Exception as e:
-                logging.error(f"Failed to send to channel: {e}")
+            except Exception: pass
