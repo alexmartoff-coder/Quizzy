@@ -1,6 +1,8 @@
 import aiosqlite
 import os
 from datetime import datetime
+from aiogram import Bot
+from config import TICKET_LIMIT, CHANNEL_ID
 
 DB_PATH = "bot_database.db"
 
@@ -218,3 +220,22 @@ async def log_payment(user_id, amount, payload, telegram_id, provider_id):
             VALUES (?, ?, ?, ?, ?)
         """, (user_id, amount, payload, telegram_id, provider_id))
         await db.commit()
+
+async def check_and_trigger_closure(bot: Bot):
+    """Проверяет условия закрытия и выполняет действия по закрытию."""
+    total = await get_total_tickets_count()
+    deadline = datetime(2026, 4, 10)
+
+    if (total >= TICKET_LIMIT or datetime.now() >= deadline) and not await is_collection_closed():
+        await close_collection()
+        try:
+            text = (
+                "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                "Мы достигли лимита в 2500 билетов раньше срока.\n"
+                "Спасибо всем, кто принял участие!\n\n"
+                "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+            )
+            await bot.send_message(chat_id=CHANNEL_ID, text=text)
+        except Exception as e:
+            import logging
+            logging.error(f"Error sending closure message to channel: {e}")

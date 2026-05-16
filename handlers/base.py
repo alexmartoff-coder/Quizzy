@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
-from database.db import add_user, get_user_tickets, get_leaderboard, is_collection_closed
+from database.db import add_user, get_user_tickets, get_leaderboard, is_collection_closed, check_and_trigger_closure
 from keyboards.menu import get_main_menu_keyboard
 
 router = Router()
@@ -9,6 +9,8 @@ router = Router()
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     await add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
+    # Проактивная проверка закрытия (например, по дате) при старте
+    await check_and_trigger_closure(message.bot)
     await message.answer(
         "Добро пожаловать в квиз @googlestop_bot!\n\n"
         "Участвуй в розыгрыше iPhone 17. Один билет стоит 99 ₽. "
