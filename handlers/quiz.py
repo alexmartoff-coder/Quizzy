@@ -2,7 +2,7 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from handlers.quiz_states import QuizStates
-from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, issue_random_tickets, get_total_tickets_count, close_collection, is_collection_closed, mark_questions_as_seen
+from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, issue_random_tickets, get_total_tickets_count, close_collection, is_collection_closed, mark_questions_as_seen, check_and_trigger_closure
 from keyboards.menu import get_main_menu_keyboard
 from utils.generator import generate_questions
 import asyncio
@@ -234,13 +234,4 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
         parse_mode="HTML"
     )
 
-    total = await get_total_tickets_count()
-    if total >= TICKET_LIMIT:
-        if not await is_collection_closed():
-            await close_collection()
-            try:
-                await bot.send_message(
-                    chat_id=CHANNEL_ID,
-                    text="🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\nЛимит в 2500 билетов достигнут. Всем спасибо!"
-                )
-            except Exception: pass
+    await check_and_trigger_closure(bot)

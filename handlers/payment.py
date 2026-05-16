@@ -2,7 +2,7 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice, CallbackQuery
 from aiogram.filters import Command
 from config import YOOKASSA_PROVIDER_TOKEN, TICKET_LIMIT, CHANNEL_ID, OWNER_ID
-from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection, log_payment
+from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, get_total_tickets_count, close_collection, log_payment, check_and_trigger_closure
 from keyboards.menu import get_payment_keyboard, get_start_quiz_keyboard
 import logging
 
@@ -43,13 +43,21 @@ async def successful_payment_handler(message: Message):
 
     await message.answer("Начинаем квиз за iPhone 17...", reply_markup=get_start_quiz_keyboard())
 
+    # Проверка лимита после выдачи билета
+    await check_and_trigger_closure(message.bot)
+
 # --- ГЛАВНЫЕ КОМАНДЫ ---
 
 @router.message(F.text == "🎁 Играть в Квиз за iPhone 17")
 async def cmd_play(message: Message):
     await add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
     if await is_collection_closed():
-        await message.answer("🎉 Сбор билетов завершён досрочно!")
+        await message.answer(
+            "🎉 Сбор билетов завершён досрочно!\n\n"
+            "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
+            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Следи за обновлениями!"
+        )
         return
 
     await message.answer(
