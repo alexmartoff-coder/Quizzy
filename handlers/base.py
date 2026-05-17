@@ -15,7 +15,7 @@ async def cmd_start(message: Message):
         "Добро пожаловать в квиз @googlestop_bot!\n\n"
         "Участвуй в розыгрыше iPhone 17 PRO 256 Гб. бесплатно. "
         "За хороший результат в квизе можно получить до +3 бонусных билетов!",
-        reply_markup=await get_main_menu_keyboard()
+        reply_markup=await get_main_menu_keyboard(message.from_user.id)
     )
 
 @router.message(F.text == "📜 Правила розыгрыша")
