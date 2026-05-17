@@ -1,5 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice
+from aiogram.filters import Command
 from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, check_and_trigger_closure, log_payment, add_system_log
 from keyboards.menu import get_start_quiz_keyboard
 import logging
@@ -57,6 +58,15 @@ async def successful_payment_handler(message: Message):
 
 # --- ГЛАВНЫЕ КОМАНДЫ ---
 
+@router.message(Command("paystatus"))
+async def cmd_paystatus(message: Message):
+    if message.from_user.id != config.OWNER_ID: return
+    token = config.YOOKASSA_PROVIDER_TOKEN
+    if not token or token == "YOUR_YOOKASSA_TOKEN":
+        await message.answer("❌ YOOKASSA_PROVIDER_TOKEN не установлен!")
+    else:
+        await message.answer(f"✅ Токен загружен. Префикс: {token[:10]}...")
+
 @router.message(F.text == "🎁 Играть в квиз за iPhone 17 PRO 256 Гб.")
 async def cmd_play(message: Message):
     user_id = message.from_user.id
@@ -81,9 +91,13 @@ async def cmd_play(message: Message):
     await message.answer("🧾 Формируем счёт на 99 RUB...")
 
     try:
-        # Для надежности приводим токен к строке и добавляем start_parameter
+        # Для надежности приводим токен к строке
         token = str(config.YOOKASSA_PROVIDER_TOKEN)
-        token_prefix = token[:10] if token else "None"
+
+        if not token or token == "None" or token == "YOUR_YOOKASSA_TOKEN":
+            raise ValueError("YOOKASSA_PROVIDER_TOKEN is invalid or empty")
+
+        token_prefix = token[:10]
         logging.info(f"PAYMENT_STEP: Calling answer_invoice. User: {user_id}, Token prefix: {token_prefix}")
 
         await message.answer_invoice(
@@ -93,7 +107,7 @@ async def cmd_play(message: Message):
             currency="RUB",
             prices=[LabeledPrice(label="Билет", amount=9900)],
             payload="ticket_purchase",
-            start_parameter="iphone17pro_quiz"
+            start_parameter="pay_ticket"
         )
         logging.info(f"PAYMENT_STEP: answer_invoice successful. User: {user_id}")
         await add_system_log(user_id, "INVOICE_SENT")
