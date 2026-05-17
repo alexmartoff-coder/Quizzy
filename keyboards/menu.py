@@ -19,3 +19,16 @@ def get_start_quiz_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Начать квиз", callback_data="start_quiz")]
     ])
+
+def get_admin_keyboard():
+    buttons = [
+        [KeyboardButton(text="👥 Пользователи (БД)")],
+        [KeyboardButton(text="🏆 Победитель")],
+        [KeyboardButton(text="⬅️ В главное меню")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
+def get_db_download_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📥 Скачать базу данных", callback_data="download_db")]
+    ])

@@ -72,4 +72,4 @@ async def cmd_leaderboard(message: Message):
 
 @router.message(F.text == "❓ Поддержка")
 async def cmd_support(message: Message):
-    await message.answer("По всем вопросам обращайтесь к @mozgo_boy_admin")
+    await message.answer("По всем вопросам обращайтесь: sasha@cbca.ru")

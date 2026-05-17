@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
 from database.db import init_db
-from handlers import base, payment, quiz
+from handlers import base, payment, quiz, admin
 
 # YOOKASSA TEST INTEGRATION: Логирование в консоль
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +17,7 @@ async def main():
     dp = Dispatcher()
 
     # Регистрируем роутеры. Важно: платежный роутер (payment) должен быть одним из первых
+    dp.include_router(admin.router)
     dp.include_router(payment.router)
     dp.include_router(base.router)
     dp.include_router(quiz.router)
