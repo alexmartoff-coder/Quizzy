@@ -13,7 +13,7 @@ async def cmd_start(message: Message):
     await check_and_trigger_closure(message.bot)
     await message.answer(
         "Добро пожаловать в квиз @googlestop_bot!\n\n"
-        "Участвуй в розыгрыше iPhone 17 PRO 256 Гб. бесплатно. "
+        "Участвуй в розыгрыше iPhone 17 PRO 256 Гб. Один билет стоит 99 ₽. "
         "За хороший результат в квизе можно получить до +3 бонусных билетов!",
         reply_markup=await get_main_menu_keyboard(message.from_user.id)
     )
@@ -23,8 +23,8 @@ async def cmd_rules(message: Message):
     # Используем HTML для надежности отображения
     rules_html = (
         "<b>📜 Правила розыгрыша iPhone 17 PRO 256 Гб.</b>\n\n"
-        "Участие в розыгрыше бесплатное.\n\n"
-        "За каждую попытку вы получаете:\n\n"
+        "Участие — платное. Стоимость одной попытки — <b>99 ₽</b>.\n\n"
+        "За каждую оплату вы получаете:\n\n"
         "✅ 1 гарантированный билет\n\n"
         "🎁 до +3 бонусных билетов в зависимости от результата квиза:\n\n"
         "10/10 правильных → +3 билета\n"
