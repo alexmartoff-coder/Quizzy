@@ -13,7 +13,7 @@ async def cmd_start(message: Message):
     await check_and_trigger_closure(message.bot)
     await message.answer(
         "Добро пожаловать в квиз @googlestop_bot!\n\n"
-        "Участвуй в розыгрыше iPhone 17 бесплатно. "
+        "Участвуй в розыгрыше iPhone 17 PRO 256 Гб. бесплатно. "
         "За хороший результат в квизе можно получить до +3 бонусных билетов!",
         reply_markup=await get_main_menu_keyboard()
     )
@@ -22,7 +22,7 @@ async def cmd_start(message: Message):
 async def cmd_rules(message: Message):
     # Используем HTML для надежности отображения
     rules_html = (
-        "<b>📜 Правила розыгрыша iPhone 17</b>\n\n"
+        "<b>📜 Правила розыгрыша iPhone 17 PRO 256 Гб.</b>\n\n"
         "Участие в розыгрыше бесплатное.\n\n"
         "За каждую попытку вы получаете:\n\n"
         "✅ 1 гарантированный билет\n\n"
@@ -41,7 +41,7 @@ async def cmd_rules(message: Message):
         "Номер билета присваивается рандомно.\n\n"
         "Прямой эфир с определением победителя состоится в канале @mozgo_boy — дата и время будут объявлены там же.\n\n"
         "Один участник может иметь несколько попыток — чем больше билетов, тем выше шанс выиграть.\n\n"
-        "💡 <i>Чем больше правильных ответов в квизе, тем больше бонусных билетов ты получаешь — и тем выше твой шанс на iPhone 17!</i>"
+        "💡 <i>Чем больше правильных ответов в квизе, тем больше бонусных билетов ты получаешь — и тем выше твой шанс на iPhone 17 PRO 256 Гб.!</i>"
     )
     await message.answer(rules_html, parse_mode="HTML", disable_web_page_preview=True)
 
@@ -49,7 +49,7 @@ async def cmd_rules(message: Message):
 async def cmd_my_tickets(message: Message):
     tickets = await get_user_tickets(message.from_user.id)
     if not tickets:
-        await message.answer("У тебя пока нет билетов. Нажми «🎁 Участвовать», чтобы участвовать!")
+        await message.answer("У тебя пока нет билетов. Нажми «🎁 Участвовать...» в меню, чтобы участвовать!")
     else:
         # Форматируем номера билетов как 4 цифры (0001, 0002 и т.д.)
         tickets_str = ", ".join([f"№{t:04d}" for t in tickets])

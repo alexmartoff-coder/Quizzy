@@ -10,7 +10,7 @@ router = Router()
 
 # --- ГЛАВНЫЕ КОМАНДЫ ---
 
-@router.message(F.text == "🎁 Участвовать в розыгрыше iPhone 17")
+@router.message(F.text == "🎁 Участвовать в розыгрыше iPhone 17 PRO 256 Гб.")
 async def cmd_play(message: Message):
     user_id = message.from_user.id
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
@@ -19,7 +19,7 @@ async def cmd_play(message: Message):
         await message.answer(
             "🎉 Сбор билетов завершён досрочно!\n\n"
             "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
-            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Розыгрыш iPhone 17 PRO 256 Гб. состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
             "Следи за обновлениями!"
         )
         return

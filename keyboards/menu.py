@@ -6,7 +6,7 @@ async def get_main_menu_keyboard():
 
     buttons = []
     if not closed:
-        buttons.append([KeyboardButton(text="🎁 Участвовать в розыгрыше iPhone 17")])
+        buttons.append([KeyboardButton(text="🎁 Участвовать в розыгрыше iPhone 17 PRO 256 Гб.")])
 
     buttons.extend([
         [KeyboardButton(text="📜 Правила розыгрыша"), KeyboardButton(text="🎟️ Мои билеты")],
