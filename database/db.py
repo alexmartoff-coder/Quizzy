@@ -224,11 +224,13 @@ async def log_payment(user_id, amount, payload, telegram_id, provider_id):
 async def check_and_trigger_closure(bot: Bot):
     """Проверяет условия закрытия и выполняет действия по закрытию."""
     total = await get_total_tickets_count()
+    # Учитываем, что 10 апреля - крайний срок
     deadline = datetime(2026, 4, 10)
 
     if (total >= TICKET_LIMIT or datetime.now() >= deadline) and not await is_collection_closed():
         await close_collection()
         try:
+            # Текст сообщения для канала согласно ТЗ
             text = (
                 "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
                 "Мы достигли лимита в 2500 билетов раньше срока.\n"

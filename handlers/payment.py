@@ -21,8 +21,6 @@ async def successful_payment_handler(message: Message):
     """Обработка подтвержденного платежа."""
     logging.info(f"SUCCESSFUL_PAYMENT: {message.from_user.id}")
 
-    await message.answer("✅ Оплата прошла успешно!")
-
     user_id = message.from_user.id
     # Гарантируем регистрацию
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
@@ -38,8 +36,16 @@ async def successful_payment_handler(message: Message):
     )
 
     # Выдаем билет и готовим квиз
-    await issue_random_tickets(user_id, 1, "base")
+    issued = await issue_random_tickets(user_id, 1, "base")
+    if not issued:
+        await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 2500+ билетов.\n\nПожалуйста, свяжитесь с поддержкой @mozgo_boy_admin для возврата средств.")
+        await check_and_trigger_closure(message.bot)
+        return
+
+    ticket_num = issued[0]
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
+
+    await message.answer(f"Оплата прошла! Твой базовый билет №{ticket_num:04d} получен")
 
     await message.answer("Начинаем квиз за iPhone 17...", reply_markup=get_start_quiz_keyboard())
 
@@ -105,6 +111,11 @@ async def cmd_testpay(message: Message):
     if message.from_user.id != OWNER_ID: return
     user_id = message.from_user.id
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
-    await issue_random_tickets(user_id, 1, "base")
+    issued = await issue_random_tickets(user_id, 1, "base")
+    if not issued:
+        await message.answer("🎉 Сбор билетов завершён досрочно!")
+        return
+    ticket_num = issued[0]
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
-    await message.answer("✅ (Тест) Оплата прошла успешно! Начинаем квиз...", reply_markup=get_start_quiz_keyboard())
+    await message.answer(f"Оплата прошла! Твой базовый билет №{ticket_num:04d} получен")
+    await message.answer("Начинаем квиз за iPhone 17...", reply_markup=get_start_quiz_keyboard())

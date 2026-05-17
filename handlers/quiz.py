@@ -115,6 +115,16 @@ async def quiz_timer_logic(bot: Bot, state: FSMContext, user_id: int, q_idx: int
 
 @router.callback_query(F.data == "start_quiz")
 async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
+    if await is_collection_closed():
+        await callback.answer("Сбор билетов завершён!", show_alert=True)
+        await callback.message.answer(
+            "🎉 Сбор билетов завершён досрочно!\n\n"
+            "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
+            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Следи за обновлениями!"
+        )
+        return
+
     await callback.answer()
     user_id = callback.from_user.id
     session = await get_quiz_session(user_id)
@@ -211,18 +221,23 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
 
     msg = f"🏁 <b>Квиз завершён!</b>\n\nТвой результат: <b>{score}/10</b>\n\n"
 
+    total_tickets = 1  # 1 base ticket always given before quiz
     if bonus > 0:
         issued = await issue_random_tickets(user_id, bonus, "bonus")
         if issued:
-            if len(issued) == 1:
-                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусный билет</b> (№{issued[0]:04d})!"
+            bonus_count = len(issued)
+            total_tickets += bonus_count
+            if bonus_count == 1:
+                msg += f"🎉 Ты получаешь <b>{bonus_count} бонусный билет</b> (№{issued[0]:04d})!\n"
             else:
                 tickets_str = ", ".join([f"№{t:04d}" for t in issued])
-                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусных билета</b> ({tickets_str})!"
+                msg += f"🎉 Ты получаешь <b>{bonus_count} бонусных билета</b> ({tickets_str})!\n"
         else:
-            msg += "Бонусные билеты закончились!"
+            msg += "Бонусные билеты закончились!\n"
     else:
-        msg += "Бонусных билетов в этот раз нет. Попробуй еще раз!"
+        msg += "Бонусных билетов в этот раз нет. Попробуй еще раз!\n"
+
+    msg += f"\nВсего за эту попытку получено билетов: <b>{total_tickets}</b>"
 
     await finish_quiz_session(user_id)
     await state.clear()
