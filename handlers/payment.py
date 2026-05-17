@@ -14,6 +14,7 @@ router = Router()
 @router.pre_checkout_query()
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     """Ответ на предварительный запрос (нужен в течение 10 секунд)."""
+    logging.info(f"PRE_CHECKOUT_QUERY: {pre_checkout_query.id} from {pre_checkout_query.from_user.id}")
     await pre_checkout_query.answer(ok=True)
 
 @router.message(F.successful_payment)
@@ -62,12 +63,17 @@ async def cmd_play(message: Message):
 
     await message.answer("🧾 Формируем счёт на 99 RUB...")
 
-    await message.answer_invoice(
-        title="Билет участия в розыгрыше",
-        description="1 билет + доступ к квизу за iPhone 17 PRO 256 Гб.",
-        provider_token=config.YOOKASSA_PROVIDER_TOKEN,
-        currency="RUB",
-        prices=[LabeledPrice(label="Билет", amount=9900)],
-        payload="ticket_purchase"
-    )
+    try:
+        await message.answer_invoice(
+            title="Билет участия в розыгрыше",
+            description="1 билет + доступ к квизу за iPhone 17 PRO 256 Гб.",
+            provider_token=config.YOOKASSA_PROVIDER_TOKEN,
+            currency="RUB",
+            prices=[LabeledPrice(label="Билет", amount=9900)],
+            payload="ticket_purchase"
+        )
+        logging.info(f"INVOICE_SENT: User {user_id}")
+    except Exception as e:
+        logging.error(f"INVOICE_ERROR: {e}")
+        await message.answer(f"❌ Ошибка при формировании счёта: {e}")
 
