@@ -230,7 +230,7 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     await bot.send_message(
         chat_id=user_id,
         text=msg,
-        reply_markup=await get_main_menu_keyboard(),
+        reply_markup=await get_main_menu_keyboard(user_id),
         parse_mode="HTML"
     )
 
