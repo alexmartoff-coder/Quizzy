@@ -69,6 +69,17 @@ async def init_db():
             )
         """)
 
+        # Таблица системных логов
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS system_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                event TEXT,
+                details TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Инициализация настроек
         await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('is_closed', '0')")
 
@@ -219,6 +230,15 @@ async def log_payment(user_id, amount, payload, telegram_id, provider_id):
             INSERT INTO payments (user_id, amount, payload, telegram_payment_charge_id, provider_payment_charge_id)
             VALUES (?, ?, ?, ?, ?)
         """, (user_id, amount, payload, telegram_id, provider_id))
+        await db.commit()
+
+async def add_system_log(user_id, event, details=None):
+    """Записывает системное событие в БД."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO system_logs (user_id, event, details)
+            VALUES (?, ?, ?)
+        """, (user_id, event, details))
         await db.commit()
 
 async def check_and_trigger_closure(bot: Bot):
