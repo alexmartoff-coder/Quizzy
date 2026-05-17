@@ -64,13 +64,19 @@ async def cmd_play(message: Message):
     await message.answer("🧾 Формируем счёт на 99 RUB...")
 
     try:
+        # Для надежности приводим токен к строке и добавляем start_parameter
+        token = str(config.YOOKASSA_PROVIDER_TOKEN)
+        token_prefix = token[:10] if token else "None"
+        logging.info(f"PAYMENT: Sending invoice. Token prefix: {token_prefix}")
+
         await message.answer_invoice(
             title="Билет участия в розыгрыше",
             description="1 билет + доступ к квизу за iPhone 17 PRO 256 Гб.",
-            provider_token=config.YOOKASSA_PROVIDER_TOKEN,
+            provider_token=token,
             currency="RUB",
             prices=[LabeledPrice(label="Билет", amount=9900)],
-            payload="ticket_purchase"
+            payload="ticket_purchase",
+            start_parameter="iphone17pro_quiz"
         )
         logging.info(f"INVOICE_SENT: User {user_id}")
     except Exception as e:
