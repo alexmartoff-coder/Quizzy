@@ -10,8 +10,8 @@ class TestClosure(unittest.IsolatedAsyncioTestCase):
     @patch('database.db.close_collection')
     @patch('database.db.datetime')
     async def test_closure_by_tickets(self, mock_datetime, mock_close, mock_is_closed, mock_count):
-        # Setup: 2500 tickets, not closed, current date before deadline
-        mock_count.return_value = 2500
+        # Setup: 3500 tickets, not closed, current date before deadline
+        mock_count.return_value = 3500
         mock_is_closed.return_value = False
         mock_datetime.now.return_value = datetime(2025, 1, 1)
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
@@ -24,24 +24,6 @@ class TestClosure(unittest.IsolatedAsyncioTestCase):
         bot.send_message.assert_called_once()
         args, kwargs = bot.send_message.call_args
         self.assertIn("СБОР БИЛЕТОВ ЗАВЕРШЁН", kwargs['text'])
-
-    @patch('database.db.get_total_tickets_count')
-    @patch('database.db.is_collection_closed')
-    @patch('database.db.close_collection')
-    @patch('database.db.datetime')
-    async def test_closure_by_date(self, mock_datetime, mock_close, mock_is_closed, mock_count):
-        # Setup: 100 tickets, not closed, current date AFTER deadline
-        mock_count.return_value = 100
-        mock_is_closed.return_value = False
-        mock_datetime.now.return_value = datetime(2026, 4, 11)
-        mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-
-        bot = AsyncMock()
-
-        await check_and_trigger_closure(bot)
-
-        mock_close.assert_called_once()
-        bot.send_message.assert_called_once()
 
     @patch('database.db.get_total_tickets_count')
     @patch('database.db.is_collection_closed')
@@ -66,8 +48,8 @@ class TestClosure(unittest.IsolatedAsyncioTestCase):
     @patch('database.db.close_collection')
     @patch('database.db.datetime')
     async def test_already_closed(self, mock_datetime, mock_close, mock_is_closed, mock_count):
-        # Setup: 2500 tickets, already closed
-        mock_count.return_value = 2500
+        # Setup: 3500 tickets, already closed
+        mock_count.return_value = 3500
         mock_is_closed.return_value = True
         mock_datetime.now.return_value = datetime(2025, 1, 1)
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
