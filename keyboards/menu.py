@@ -15,7 +15,7 @@ async def get_main_menu_keyboard(user_id: int = None):
     ])
 
     if user_id == OWNER_ID:
-        buttons.append([KeyboardButton(text="🛠 Админ-панель")])
+        buttons.append([KeyboardButton(text="👨‍💼 Админ-панель")])
 
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
@@ -28,7 +28,7 @@ def get_admin_keyboard():
     buttons = [
         [KeyboardButton(text="👥 Пользователи (БД)")],
         [KeyboardButton(text="🏆 Победитель")],
-        [KeyboardButton(text="🔙 Назад")]
+        [KeyboardButton(text="🔙 Назад в главное меню")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

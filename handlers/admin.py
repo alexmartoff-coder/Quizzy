@@ -10,7 +10,7 @@ import os
 router = Router()
 
 @router.message(Command("admin"))
-@router.message(F.text == "🛠 Админ-панель")
+@router.message(F.text == "👨‍💼 Админ-панель")
 async def cmd_admin(message: Message):
     if message.from_user.id != OWNER_ID:
         return
@@ -47,9 +47,9 @@ async def admin_winner(message: Message):
     if message.from_user.id != OWNER_ID:
         return
 
-    await message.answer("ℹ️ Здесь будет информация о победителе после окончания розыгрыша.")
+    await message.answer("ℹ️ Здесь будет информация о победителе")
 
-@router.message(F.text == "🔙 Назад")
+@router.message(F.text == "🔙 Назад в главное меню")
 async def back_to_main(message: Message):
     if message.from_user.id != OWNER_ID:
         return
