@@ -5,8 +5,15 @@ from config import BOT_TOKEN
 from database.db import init_db
 from handlers import base, payment, quiz, admin
 
-# YOOKASSA TEST INTEGRATION: Логирование в консоль
-logging.basicConfig(level=logging.INFO)
+# Расширенное логирование в консоль и файл
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler()
+    ]
+)
 
 async def main():
     # Инициализация БД
