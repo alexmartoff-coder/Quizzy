@@ -16,9 +16,9 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
-    # Регистрируем роутеры. Важно: платежный роутер (payment) должен быть одним из первых
-    dp.include_router(admin.router)
+    # Регистрируем роутеры. Важно: платежный роутер (payment) должен быть ПЕРВЫМ
     dp.include_router(payment.router)
+    dp.include_router(admin.router)
     dp.include_router(base.router)
     dp.include_router(quiz.router)
 
