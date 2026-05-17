@@ -6,7 +6,7 @@ async def get_main_menu_keyboard():
 
     buttons = []
     if not closed:
-        buttons.append([KeyboardButton(text="🎁 Играть в Квиз за iPhone 17")])
+        buttons.append([KeyboardButton(text="🎁 Участвовать в розыгрыше iPhone 17 PRO 256 Гб.")])
 
     buttons.extend([
         [KeyboardButton(text="📜 Правила розыгрыша"), KeyboardButton(text="🎟️ Мои билеты")],
@@ -14,11 +14,6 @@ async def get_main_menu_keyboard():
     ])
 
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-
-def get_payment_keyboard():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Оплатить 99 ₽", callback_data="pay_99")]
-    ])
 
 def get_start_quiz_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
