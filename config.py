@@ -8,4 +8,4 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
 CHANNEL_ID = "@mozgo_boy"
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
-TICKET_LIMIT = 2500
+TICKET_LIMIT = 3500

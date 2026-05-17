@@ -80,8 +80,8 @@ async def init_db():
             available_count = (await cursor.fetchone())[0]
 
         if issued_count == 0 and available_count == 0:
-            # Заполняем пул номерами 1-2500
-            for i in range(1, 2501):
+            # Заполняем пул номерами 1-3500
+            for i in range(1, 3501):
                 await db.execute("INSERT INTO available_tickets (ticket_number) VALUES (?)", (i,))
 
         await db.commit()
@@ -224,14 +224,13 @@ async def log_payment(user_id, amount, payload, telegram_id, provider_id):
 async def check_and_trigger_closure(bot: Bot):
     """Проверяет условия закрытия и выполняет действия по закрытию."""
     total = await get_total_tickets_count()
-    deadline = datetime(2026, 4, 10)
 
-    if (total >= TICKET_LIMIT or datetime.now() >= deadline) and not await is_collection_closed():
+    if total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
         try:
             text = (
                 "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 2500 билетов раньше срока.\n"
+                "Мы достигли лимита в 3500 билетов.\n"
                 "Спасибо всем, кто принял участие!\n\n"
                 "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
             )

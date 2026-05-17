@@ -9,7 +9,7 @@ router = Router()
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     await add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
-    # Проактивная проверка закрытия (например, по дате) при старте
+    # Проактивная проверка закрытия при старте
     await check_and_trigger_closure(message.bot)
     await message.answer(
         "Добро пожаловать в квиз @googlestop_bot!\n\n"
@@ -32,7 +32,7 @@ async def cmd_rules(message: Message):
         "8/10 → +1 билет\n"
         "менее 8 → бонусов нет\n\n"
         "<b>Все билеты</b> (базовые + бонусные) участвуют в розыгрыше.\n\n"
-        "<b>Сбор билетов</b> автоматически прекращается, как только набрано <b>2500 билетов</b>.\n\n"
+        "<b>Сбор билетов</b> автоматически прекращается, как только набрано <b>3500 билетов</b>.\n\n"
         "После остановки сбора:\n"
         "❌ играть больше нельзя\n"
         "✅ можно посмотреть свои билеты, лидерборд и правила\n\n"
@@ -49,7 +49,7 @@ async def cmd_rules(message: Message):
 async def cmd_my_tickets(message: Message):
     tickets = await get_user_tickets(message.from_user.id)
     if not tickets:
-        await message.answer("У тебя пока нет билетов. Нажми «🎁 Участвовать...» в меню, чтобы участвовать!")
+        await message.answer("У тебя пока нет билетов. Нажми «🎁 Играть в квиз...» в меню, чтобы участвовать!")
     else:
         # Форматируем номера билетов как 4 цифры (0001, 0002 и т.д.)
         tickets_str = ", ".join([f"№{t:04d}" for t in tickets])
