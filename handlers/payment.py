@@ -20,11 +20,11 @@ if not config.YOOKASSA_PROVIDER_TOKEN:
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     """Ответ на предварительный запрос (нужен в течение 10 секунд)."""
     user_id = pre_checkout_query.from_user.id
-    logging.info(f"DEBUG: PreCheckoutQuery received. ID: {pre_checkout_query.id}, User ID: {user_id}")
+    logging.info(f"💳 PreCheckoutQuery received from user {user_id}")
     await add_system_log(user_id, "PRE_CHECKOUT_RECEIVED", f"ID: {pre_checkout_query.id}")
     try:
         await pre_checkout_query.answer(ok=True)
-        logging.info(f"INFO: PreCheckoutQuery handled successfully for user {user_id}")
+        logging.info(f"✅ PreCheckoutQuery answered OK for user {user_id}")
         await add_system_log(user_id, "PRE_CHECKOUT_OK")
     except Exception as e:
         logging.error(f"❌ Failed to answer PreCheckoutQuery for user {user_id}: {e}", exc_info=True)
