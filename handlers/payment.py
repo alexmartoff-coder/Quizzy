@@ -4,9 +4,9 @@ from database.db import add_user, issue_random_tickets, set_quiz_session, is_col
 from keyboards.menu import get_start_quiz_keyboard
 import config
 
-payment_router = Router()
+payment_router = Router(name="payment_router")
 
-@payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть"))
+@payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в квиз"))
 async def start_payment(message: Message):
     user_id = message.from_user.id
     print(f"💰 PAYMENT START | User: {user_id}")
@@ -19,7 +19,7 @@ async def start_payment(message: Message):
         await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 3500+ билетов.")
         return
 
-    await message.answer("🧾 Формируем счёт...")
+    await message.answer("🧾 Формируем счёт на 99 RUB...")
 
     try:
         token = str(config.YOOKASSA_PROVIDER_TOKEN)
@@ -40,7 +40,7 @@ async def start_payment(message: Message):
         await message.answer(f"❌ Ошибка при формировании счёта: {e}")
 
 @payment_router.pre_checkout_query()
-async def pre_checkout(pre_checkout_query: PreCheckoutQuery):
+async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     user_id = pre_checkout_query.from_user.id
     print(f"✅ PRE_CHECKOUT_QUERY RECEIVED | User: {user_id}")
     await add_system_log(user_id, "PRE_CHECKOUT_RECEIVED")
@@ -48,7 +48,7 @@ async def pre_checkout(pre_checkout_query: PreCheckoutQuery):
     print(f"🆗 PRE_CHECKOUT_QUERY ANSWERED OK | User: {user_id}")
 
 @payment_router.message(F.successful_payment)
-async def successful_payment(message: Message):
+async def successful_payment_handler(message: Message):
     user_id = message.from_user.id
     print(f"🎉 SUCCESSFUL PAYMENT | User: {user_id}")
     await add_system_log(user_id, "SUCCESSFUL_PAYMENT_RECEIVED")
