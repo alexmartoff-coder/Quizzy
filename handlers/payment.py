@@ -6,7 +6,7 @@ from keyboards.menu import get_start_quiz_keyboard
 import logging
 import config
 
-router = Router()
+payment_router = Router()
 
 # 🧪 Тестовый режим ЮKassa
 
@@ -16,13 +16,14 @@ if not config.YOOKASSA_PROVIDER_TOKEN:
 
 # --- ОБРАБОТЧИКИ ПЛАТЕЖЕЙ ---
 
-@router.pre_checkout_query()
+@payment_router.pre_checkout_query()
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     """Ответ на предварительный запрос (нужен в течение 10 секунд)."""
-    print(f"✅ PRE_CHECKOUT_QUERY | User: {pre_checkout_query.from_user.id}")
+    user_id = pre_checkout_query.from_user.id
+    print(f"✅ PRE_CHECKOUT_QUERY RECEIVED | User: {user_id}")
     await pre_checkout_query.answer(ok=True)
 
-@router.message(F.successful_payment)
+@payment_router.message(F.successful_payment)
 async def successful_payment_handler(message: Message):
     """Обработка подтвержденного платежа."""
     user_id = message.from_user.id
@@ -54,7 +55,7 @@ async def successful_payment_handler(message: Message):
 
 # --- ГЛАВНЫЕ КОМАНДЫ ---
 
-@router.message(Command("paystatus"))
+@payment_router.message(Command("paystatus"))
 async def cmd_paystatus(message: Message):
     if message.from_user.id != config.OWNER_ID: return
     token = config.YOOKASSA_PROVIDER_TOKEN
@@ -63,7 +64,7 @@ async def cmd_paystatus(message: Message):
     else:
         await message.answer(f"✅ Токен загружен. Префикс: {token[:10]}...")
 
-@router.message(F.text == "🎁 Играть в квиз за iPhone 17 PRO 256 Гб.")
+@payment_router.message(F.text == "🎁 Играть в квиз за iPhone 17 PRO 256 Гб.")
 async def cmd_play(message: Message):
     user_id = message.from_user.id
     logging.info(f"DEBUG: User {user_id} triggered participation button")
