@@ -29,11 +29,11 @@ async def main():
     dp.include_router(base.router)
     dp.include_router(quiz.router)
 
-    from config import YOOKASSA_PROVIDER_TOKEN
-    if not YOOKASSA_PROVIDER_TOKEN or YOOKASSA_PROVIDER_TOKEN == "YOUR_YOOKASSA_TOKEN":
-        logging.warning("⚠️ YOOKASSA_PROVIDER_TOKEN is missing or not set!")
+    from config import PROVIDER_TOKEN
+    if not PROVIDER_TOKEN:
+        logging.warning("⚠️ PROVIDER_TOKEN is missing!")
     else:
-        logging.info(f"✅ YooKassa token loaded (prefix: {YOOKASSA_PROVIDER_TOKEN[:10]}...)")
+        logging.info(f"✅ Provider token loaded (prefix: {PROVIDER_TOKEN[:10]}...)")
 
     logging.info("Starting @googlestop_bot...")
 

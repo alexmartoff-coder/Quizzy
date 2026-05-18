@@ -3,14 +3,13 @@ from aiogram.types import Message, PreCheckoutQuery, LabeledPrice
 from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, check_and_trigger_closure, log_payment
 from keyboards.menu import get_start_quiz_keyboard
 import config
-import time
 
 payment_router = Router(name="payment_router")
 
 @payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в квиз"))
 async def start_payment(message: Message):
     user_id = message.from_user.id
-    print(f"💰 PAYMENT START | User: {user_id}")
+    print(f"💰 PAYMENT_START | User: {user_id}")
 
     # Проверка лимита билетов
     if await is_collection_closed():
@@ -22,13 +21,13 @@ async def start_payment(message: Message):
     try:
         await message.answer_invoice(
             title="Билет участия в розыгрыше",
-            description="1 билет + доступ к квизу для участия в розыгрыше iPhone 17 PRO 256 Гб.",
-            provider_token=config.YOOKASSA_PROVIDER_TOKEN,
+            description="1 билет + доступ к квизу",
+            provider_token=config.PROVIDER_TOKEN,
             currency="RUB",
             prices=[LabeledPrice(label="Билет", amount=9900)],
-            payload=f"ticket_{user_id}_{int(time.time())}"
+            payload="ticket_purchase"
         )
-        print(f"✅ INVOICE SENT | User: {user_id}")
+        print(f"✅ INVOICE_SENT | User: {user_id}")
     except Exception as e:
         print(f"❌ ERROR: {e}")
         await message.answer(f"❌ Ошибка при формировании счёта: {e}")
@@ -41,7 +40,7 @@ async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
 @payment_router.message(F.successful_payment)
 async def successful_payment_handler(message: Message):
     user_id = message.from_user.id
-    print(f"✅ SUCCESSFUL PAYMENT | User: {user_id}")
+    print(f"✅ SUCCESSFUL_PAYMENT | User: {user_id}")
 
     await message.answer("✅ Оплата прошла успешно! Начинаем квиз...")
 
