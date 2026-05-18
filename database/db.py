@@ -2,7 +2,7 @@ import aiosqlite
 import os
 from datetime import datetime
 from aiogram import Bot
-from config import TICKET_LIMIT, CHANNEL_ID
+from config import TICKET_LIMIT, CHANNEL_ID, CLOSURE_DATE
 
 DB_PATH = "bot_database.db"
 
@@ -91,8 +91,8 @@ async def init_db():
             available_count = (await cursor.fetchone())[0]
 
         if issued_count == 0 and available_count == 0:
-            # Заполняем пул номерами 1-3500
-            for i in range(1, 3501):
+            # Заполняем пул номерами 1-TICKET_LIMIT
+            for i in range(1, TICKET_LIMIT + 1):
                 await db.execute("INSERT INTO available_tickets (ticket_number) VALUES (?)", (i,))
 
         await db.commit()
@@ -244,16 +244,26 @@ async def add_system_log(user_id, event, details=None):
 async def check_and_trigger_closure(bot: Bot):
     """Проверяет условия закрытия и выполняет действия по закрытию."""
     total = await get_total_tickets_count()
+    current_date = datetime.now()
 
-    if total >= TICKET_LIMIT and not await is_collection_closed():
+    if (total >= TICKET_LIMIT or current_date >= CLOSURE_DATE) and not await is_collection_closed():
+        is_limit_reached = total >= TICKET_LIMIT
         await close_collection()
         try:
-            text = (
-                "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 билетов.\n"
-                "Спасибо всем, кто принял участие!\n\n"
-                "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
-            )
+            if is_limit_reached:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    "Мы достигли лимита в 2500 билетов раньше срока.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
+            else:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    "Время сбора билетов истекло.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
             await bot.send_message(chat_id=CHANNEL_ID, text=text)
         except Exception as e:
             import logging

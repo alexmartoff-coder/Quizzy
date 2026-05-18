@@ -31,7 +31,7 @@ async def successful_payment_handler(message: Message):
     user_id = message.from_user.id
     logging.info(f"PAYMENT_STEP: Successful payment received. User: {user_id}")
     await add_system_log(user_id, "SUCCESSFUL_PAYMENT_RECEIVED")
-    await message.answer("✅ Оплата прошла успешно!")
+    # await message.answer("✅ Оплата прошла успешно!")
 
     # Гарантируем регистрацию
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
@@ -47,17 +47,22 @@ async def successful_payment_handler(message: Message):
     )
 
     # Выдаем билет и готовим квиз
-    await issue_random_tickets(user_id, 1, "base")
+    issued_tickets = await issue_random_tickets(user_id, 1, "base")
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
 
-    await message.answer("Начинаем квиз за iPhone 17 PRO 256 Гб....", reply_markup=get_start_quiz_keyboard())
+    if issued_tickets:
+        await message.answer(f"Оплата прошла! Твой базовый билет №{issued_tickets[0]:04d} получен")
+    else:
+        await message.answer("✅ Оплата прошла успешно!")
+
+    await message.answer("Начинаем квиз за iPhone 17....", reply_markup=get_start_quiz_keyboard())
 
     # Проверка лимита после выдачи билета
     await check_and_trigger_closure(message.bot)
 
 # --- ГЛАВНЫЕ КОМАНДЫ ---
 
-@router.message(F.text == "🎁 Играть в квиз за iPhone 17 PRO 256 Гб.")
+@router.message(F.text == "🎁 Играть в Квиз за iPhone 17")
 async def cmd_play(message: Message):
     user_id = message.from_user.id
     logging.info(f"PAYMENT_STEP: User {user_id} clicked 'Play Quiz' button")
@@ -70,8 +75,8 @@ async def cmd_play(message: Message):
         await add_system_log(user_id, "PLAY_REJECTED_CLOSED")
         await message.answer(
             "🎉 Сбор билетов завершён досрочно!\n\n"
-            "Мы набрали 3500+ билетов. Спасибо всем участникам!\n\n"
-            "Розыгрыш iPhone 17 PRO 256 Гб. состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
+            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
             "Следи за обновлениями!"
         )
         return
@@ -88,12 +93,12 @@ async def cmd_play(message: Message):
 
         await message.answer_invoice(
             title="Билет участия в розыгрыше",
-            description="1 билет + доступ к квизу за iPhone 17 PRO 256 Гб.",
+            description="1 билет + доступ к квизу за iPhone 17",
             provider_token=token,
             currency="RUB",
             prices=[LabeledPrice(label="Билет", amount=9900)],
             payload="ticket_purchase",
-            start_parameter="iphone17pro_quiz"
+            start_parameter="iphone17_quiz"
         )
         logging.info(f"PAYMENT_STEP: answer_invoice successful. User: {user_id}")
         await add_system_log(user_id, "INVOICE_SENT")

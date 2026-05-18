@@ -29,7 +29,7 @@ async def main():
     dp.include_router(base.router)
     dp.include_router(quiz.router)
 
-    logging.info("Starting @googlestop_bot...")
+    logging.info("Starting @prekrasenday_bot...")
 
     # Автоматически определяем необходимые типы обновлений (включая pre_checkout_query и successful_payment)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
