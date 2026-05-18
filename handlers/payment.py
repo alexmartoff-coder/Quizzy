@@ -10,20 +10,24 @@ router = Router()
 
 # 🧪 Тестовый режим ЮKassa
 
+# Проверка конфигурации при загрузке модуля
+if not config.YOOKASSA_PROVIDER_TOKEN:
+    logging.warning("⚠️ PAYMENT_CONFIG: YOOKASSA_PROVIDER_TOKEN is not set in config!")
+
 # --- ОБРАБОТЧИКИ ПЛАТЕЖЕЙ ---
 
 @router.pre_checkout_query()
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     """Ответ на предварительный запрос (нужен в течение 10 секунд)."""
     user_id = pre_checkout_query.from_user.id
-    logging.info(f"PAYMENT_STEP: PreCheckoutQuery received. ID: {pre_checkout_query.id}, User: {user_id}")
+    logging.info(f"DEBUG: PreCheckoutQuery received. ID: {pre_checkout_query.id}, User ID: {user_id}")
     await add_system_log(user_id, "PRE_CHECKOUT_RECEIVED", f"ID: {pre_checkout_query.id}")
     try:
         await pre_checkout_query.answer(ok=True)
-        logging.info(f"PAYMENT_STEP: PreCheckoutQuery answered OK. User: {user_id}")
+        logging.info(f"INFO: PreCheckoutQuery handled successfully for user {user_id}")
         await add_system_log(user_id, "PRE_CHECKOUT_OK")
     except Exception as e:
-        logging.error(f"PAYMENT_STEP: Error answering PreCheckoutQuery. User: {user_id}, Error: {e}")
+        logging.error(f"❌ Failed to answer PreCheckoutQuery for user {user_id}: {e}", exc_info=True)
         await add_system_log(user_id, "PRE_CHECKOUT_ERROR", str(e))
 
 @router.message(F.successful_payment)
@@ -70,13 +74,13 @@ async def cmd_paystatus(message: Message):
 @router.message(F.text == "🎁 Играть в квиз за iPhone 17 PRO 256 Гб.")
 async def cmd_play(message: Message):
     user_id = message.from_user.id
-    logging.info(f"PAYMENT_STEP: User {user_id} clicked 'Play Quiz' button")
+    logging.info(f"DEBUG: User {user_id} triggered participation button")
     await add_system_log(user_id, "BUTTON_CLICK_PLAY")
 
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
 
     if await is_collection_closed():
-        logging.info(f"PAYMENT_STEP: Participation rejected - collection closed. User: {user_id}")
+        logging.info(f"INFO: Participation attempt rejected (collection closed) for user {user_id}")
         await add_system_log(user_id, "PLAY_REJECTED_CLOSED")
         await message.answer(
             "🎉 Сбор билетов завершён досрочно!\n\n"
@@ -86,33 +90,36 @@ async def cmd_play(message: Message):
         )
         return
 
-    logging.info(f"PAYMENT_STEP: Attempting to send invoice. User: {user_id}")
+    payload = "ticket_purchase"
+    logging.info(f"DEBUG: Preparing to send invoice. User ID: {user_id}, Payload: {payload}")
     await add_system_log(user_id, "INVOICE_REQUESTED")
     await message.answer("🧾 Формируем счёт на 99 RUB...")
 
     try:
-        # Для надежности приводим токен к строке
+        # Валидация конфигурации перед отправкой
         token = str(config.YOOKASSA_PROVIDER_TOKEN)
+        if not token or token in ("None", "", "YOUR_YOOKASSA_TOKEN"):
+            logging.warning(f"⚠️ YOOKASSA_PROVIDER_TOKEN is missing or invalid for user {user_id}")
+            raise ValueError("Invalid YOOKASSA_PROVIDER_TOKEN")
 
-        if not token or token == "None" or token == "YOUR_YOOKASSA_TOKEN":
-            raise ValueError("YOOKASSA_PROVIDER_TOKEN is invalid or empty")
+        currency = "RUB"
+        price_amount = 9900 # 99.00 RUB
 
-        token_prefix = token[:10]
-        logging.info(f"PAYMENT_STEP: Calling answer_invoice. User: {user_id}, Token prefix: {token_prefix}")
+        logging.info(f"DEBUG: Calling answer_invoice for user {user_id}. Token prefix: {token[:10]}...")
 
-        await message.answer_invoice(
+        msg = await message.answer_invoice(
             title="Билет участия в розыгрыше",
             description="1 билет + доступ к квизу за iPhone 17 PRO 256 Гб.",
             provider_token=token,
-            currency="RUB",
-            prices=[LabeledPrice(label="Билет", amount=9900)],
-            payload="ticket_purchase",
+            currency=currency,
+            prices=[LabeledPrice(label="Билет", amount=price_amount)],
+            payload=payload,
             start_parameter="pay_ticket"
         )
-        logging.info(f"PAYMENT_STEP: answer_invoice successful. User: {user_id}")
+        logging.info(f"INFO: Invoice sent successfully. Message ID: {msg.message_id} for user {user_id}")
         await add_system_log(user_id, "INVOICE_SENT")
     except Exception as e:
-        logging.error(f"PAYMENT_STEP: answer_invoice failed. User: {user_id}, Error: {e}")
+        logging.error(f"❌ Failed to send invoice to user {user_id}: {e}", exc_info=True)
         await add_system_log(user_id, "INVOICE_ERROR", str(e))
         await message.answer(f"❌ Ошибка при формировании счёта: {e}")
 
