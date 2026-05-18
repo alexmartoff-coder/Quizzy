@@ -37,8 +37,8 @@ async def main():
 
     logging.info("Starting @googlestop_bot...")
 
-    # Явно указываем типы обновлений для polling
-    await dp.start_polling(bot, allowed_updates=["message", "callback_query", "pre_checkout_query", "successful_payment"])
+    # Автоматически определяем типы обновлений, которые бот должен слушать
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 if __name__ == "__main__":
     try:
