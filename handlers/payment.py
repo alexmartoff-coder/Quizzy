@@ -20,21 +20,21 @@ if not config.YOOKASSA_PROVIDER_TOKEN:
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     """Ответ на предварительный запрос (нужен в течение 10 секунд)."""
     user_id = pre_checkout_query.from_user.id
-    logging.info(f"💳 PreCheckoutQuery received from user {user_id}")
+    logging.info(f"💳 PRE_CHECKOUT_ENTRY: User {user_id}, Query ID: {pre_checkout_query.id}")
     await add_system_log(user_id, "PRE_CHECKOUT_RECEIVED", f"ID: {pre_checkout_query.id}")
     try:
         await pre_checkout_query.answer(ok=True)
-        logging.info(f"✅ PreCheckoutQuery answered OK for user {user_id}")
+        logging.info(f"✅ PRE_CHECKOUT_EXIT: User {user_id} - Answered OK")
         await add_system_log(user_id, "PRE_CHECKOUT_OK")
     except Exception as e:
-        logging.error(f"❌ Failed to answer PreCheckoutQuery for user {user_id}: {e}", exc_info=True)
+        logging.error(f"❌ PRE_CHECKOUT_ERROR: User {user_id} - {e}", exc_info=True)
         await add_system_log(user_id, "PRE_CHECKOUT_ERROR", str(e))
 
 @router.message(F.successful_payment)
 async def successful_payment_handler(message: Message):
     """Обработка подтвержденного платежа."""
     user_id = message.from_user.id
-    logging.info(f"PAYMENT_STEP: Successful payment received. User: {user_id}")
+    logging.info(f"💰 SUCCESSFUL_PAYMENT_ENTRY: User {user_id}")
     await add_system_log(user_id, "SUCCESSFUL_PAYMENT_RECEIVED")
     await message.answer("✅ Оплата прошла успешно!")
 
