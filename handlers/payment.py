@@ -19,16 +19,8 @@ if not config.YOOKASSA_PROVIDER_TOKEN:
 @router.pre_checkout_query()
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     """Ответ на предварительный запрос (нужен в течение 10 секунд)."""
-    user_id = pre_checkout_query.from_user.id
-    logging.info(f"💳 PRE_CHECKOUT_ENTRY: User {user_id}, Query ID: {pre_checkout_query.id}")
-    await add_system_log(user_id, "PRE_CHECKOUT_RECEIVED", f"ID: {pre_checkout_query.id}")
-    try:
-        await pre_checkout_query.answer(ok=True)
-        logging.info(f"✅ PRE_CHECKOUT_EXIT: User {user_id} - Answered OK")
-        await add_system_log(user_id, "PRE_CHECKOUT_OK")
-    except Exception as e:
-        logging.error(f"❌ PRE_CHECKOUT_ERROR: User {user_id} - {e}", exc_info=True)
-        await add_system_log(user_id, "PRE_CHECKOUT_ERROR", str(e))
+    print(f"✅ PRE_CHECKOUT_QUERY | User: {pre_checkout_query.from_user.id}")
+    await pre_checkout_query.answer(ok=True)
 
 @router.message(F.successful_payment)
 async def successful_payment_handler(message: Message):
@@ -91,35 +83,23 @@ async def cmd_play(message: Message):
         return
 
     payload = "ticket_purchase"
-    logging.info(f"DEBUG: Preparing to send invoice. User ID: {user_id}, Payload: {payload}")
-    await add_system_log(user_id, "INVOICE_REQUESTED")
+    print(f"⏳ INVOICE_PREPARING | User: {user_id}")
     await message.answer("🧾 Формируем счёт на 99 RUB...")
 
     try:
-        # Валидация конфигурации перед отправкой
         token = str(config.YOOKASSA_PROVIDER_TOKEN)
-        if not token or token in ("None", "", "YOUR_YOOKASSA_TOKEN"):
-            logging.warning(f"⚠️ YOOKASSA_PROVIDER_TOKEN is missing or invalid for user {user_id}")
-            raise ValueError("Invalid YOOKASSA_PROVIDER_TOKEN")
-
-        currency = "RUB"
-        price_amount = 9900 # 99.00 RUB
-
-        logging.info(f"DEBUG: Calling answer_invoice for user {user_id}. Token prefix: {token[:10]}...")
 
         msg = await message.answer_invoice(
             title="Билет участия в розыгрыше",
             description="1 билет + доступ к квизу за iPhone 17 PRO 256 Гб.",
             provider_token=token,
-            currency=currency,
-            prices=[LabeledPrice(label="Билет", amount=price_amount)],
-            payload=payload,
+            currency="RUB",
+            prices=[LabeledPrice(label="Билет", amount=9900)],
+            payload="ticket_purchase",
             start_parameter="pay_ticket"
         )
-        logging.info(f"INFO: Invoice sent successfully. Message ID: {msg.message_id} for user {user_id}")
-        await add_system_log(user_id, "INVOICE_SENT")
+        print(f"🚀 INVOICE_SENT | Message ID: {msg.message_id} | User: {user_id}")
     except Exception as e:
-        logging.error(f"❌ Failed to send invoice to user {user_id}: {e}", exc_info=True)
-        await add_system_log(user_id, "INVOICE_ERROR", str(e))
+        print(f"❌ INVOICE_ERROR | User: {user_id} | Error: {e}")
         await message.answer(f"❌ Ошибка при формировании счёта: {e}")
 
