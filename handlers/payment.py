@@ -8,39 +8,38 @@ payment_router = Router(name="payment_router")
 
 @payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в квиз"))
 async def start_payment(message: Message):
-    user_id = message.from_user.id
-    print(f"💰 PAYMENT_START | User: {user_id}")
+    print(f"💰 PAYMENT START | User: {message.from_user.id}")
 
     # Проверка лимита билетов
     if await is_collection_closed():
         await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 3500+ билетов.")
         return
 
-    await message.answer("⏳ Формируем счёт...")
+    await message.answer("🧾 Формируем счёт на 99 RUB...")
 
     try:
         await message.answer_invoice(
             title="Билет участия в розыгрыше",
             description="1 билет + доступ к квизу",
-            provider_token=config.PROVIDER_TOKEN,
+            provider_token=config.YOOKASSA_PROVIDER_TOKEN,
             currency="RUB",
             prices=[LabeledPrice(label="Билет", amount=9900)],
             payload="ticket_purchase"
         )
-        print(f"✅ INVOICE_SENT | User: {user_id}")
+        print(f"✅ INVOICE SENT | User: {message.from_user.id}")
     except Exception as e:
-        print(f"❌ ERROR: {e}")
-        await message.answer(f"❌ Ошибка при формировании счёта: {e}")
+        print(f"❌ INVOICE ERROR: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
 
 @payment_router.pre_checkout_query()
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
-    print(f"🔥 PRE_CHECKOUT_QUERY RECEIVED | User: {pre_checkout_query.from_user.id}")
+    print(f"✅ PRE_CHECKOUT_QUERY | User: {pre_checkout_query.from_user.id}")
     await pre_checkout_query.answer(ok=True)
 
 @payment_router.message(F.successful_payment)
 async def successful_payment_handler(message: Message):
     user_id = message.from_user.id
-    print(f"✅ SUCCESSFUL_PAYMENT | User: {user_id}")
+    print(f"🎉 SUCCESSFUL PAYMENT | User: {user_id}")
 
     await message.answer("✅ Оплата прошла успешно! Начинаем квиз...")
 
