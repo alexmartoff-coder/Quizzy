@@ -12,7 +12,12 @@ async def start_payment(message: Message):
 
     # Проверка лимита билетов
     if await is_collection_closed():
-        await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 3500+ билетов.")
+        await message.answer(
+            "🎉 Сбор билетов завершён досрочно!\n\n"
+            "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
+            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Следи за обновлениями!"
+        )
         return
 
     await message.answer("🧾 Формируем счёт на 99 RUB...")
