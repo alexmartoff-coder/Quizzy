@@ -26,7 +26,7 @@ def get_start_quiz_keyboard():
 
 def get_admin_keyboard():
     buttons = [
-        [KeyboardButton(text="👥 Пользователи (БД)")],
+        [KeyboardButton(text="📊 Экспорт в Google Sheets")],
         [KeyboardButton(text="🏆 Победитель")],
         [KeyboardButton(text="🔙 Назад в главное меню")]
     ]
@@ -34,5 +34,5 @@ def get_admin_keyboard():
 
 def get_db_download_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📥 Скачать базу данных", callback_data="download_db")]
+        [InlineKeyboardButton(text="📥 Скачать базу данных (SQLITE)", callback_data="download_db")]
     ])
