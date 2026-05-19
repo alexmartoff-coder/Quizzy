@@ -37,6 +37,9 @@ async def main():
 
     logging.info("Starting @googlestop_bot...")
 
+    # Сброс вебхуков перед началом поллинга для избежания Conflict
+    await bot.delete_webhook(drop_pending_updates=True)
+
     # Автоматически определяем типы обновлений, которые бот должен слушать
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
