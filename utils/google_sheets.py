@@ -1,12 +1,12 @@
 import os
+import json
 import logging
-from google.oauth2.service_account import Credentials
+import aiosqlite
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from config import SPREADSHEET_ID
-
-# Путь к файлу с учетными данными Service Account
-CREDENTIALS_FILE = "credentials.json"
+from config import GOOGLE_CREDENTIALS, SPREADSHEET_ID
+from database.db import DB_PATH
 
 # SCOPES для доступа к Google Sheets и Drive
 SCOPES = [
@@ -14,28 +14,43 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive.file'
 ]
 
+async def get_db_spreadsheet_id():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT value FROM settings WHERE key = 'spreadsheet_id'") as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else None
+
+async def set_db_spreadsheet_id(spreadsheet_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('spreadsheet_id', ?)", (spreadsheet_id,))
+        await db.commit()
+
 def get_service():
-    """Авторизация и получение сервиса Google Sheets API."""
-    if not os.path.exists(CREDENTIALS_FILE):
-        logging.error(f"Файл {CREDENTIALS_FILE} не найден!")
+    """Авторизация и получение сервиса Google Sheets API из переменной окружения."""
+    if not GOOGLE_CREDENTIALS:
+        logging.error("Переменная GOOGLE_CREDENTIALS не установлена!")
         return None, None
 
-    credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-    sheets_service = build('sheets', 'v4', credentials=credentials)
-    drive_service = build('drive', 'v3', credentials=credentials)
-    return sheets_service, drive_service
+    try:
+        info = json.loads(GOOGLE_CREDENTIALS)
+        credentials = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+        sheets_service = build('sheets', 'v4', credentials=credentials)
+        drive_service = build('drive', 'v3', credentials=credentials)
+        return sheets_service, drive_service
+    except Exception as e:
+        logging.error(f"Ошибка парсинга GOOGLE_CREDENTIALS: {e}")
+        return None, None
 
 async def export_to_google_sheets(data):
     """
     Экспортирует данные в Google Таблицу.
-    Если SPREADSHEET_ID нет в конфиге, создает новую таблицу.
+    Если SPREADSHEET_ID нет, создает новую таблицу.
     """
     sheets_service, drive_service = get_service()
     if not sheets_service:
-        return None, "Ошибка авторизации Google API (credentials.json?)"
+        return None, "Ошибка авторизации Google API (проверьте GOOGLE_CREDENTIALS)"
 
-    global SPREADSHEET_ID
-    spreadsheet_id = SPREADSHEET_ID
+    spreadsheet_id = await get_db_spreadsheet_id() or SPREADSHEET_ID
 
     try:
         # 1. Если ID нет, создаем новую таблицу
@@ -48,33 +63,26 @@ async def export_to_google_sheets(data):
             spreadsheet = sheets_service.spreadsheets().create(body=spreadsheet, fields='spreadsheetId').execute()
             spreadsheet_id = spreadsheet.get('spreadsheetId')
 
-            # Сохраняем в .env (попытка записи)
-            try:
-                with open(".env", "a") as f:
-                    f.write(f"\nSPREADSHEET_ID={spreadsheet_id}")
-                logging.info(f"Создана новая таблица: {spreadsheet_id}")
-            except Exception as e:
-                logging.error(f"Не удалось записать SPREADSHEET_ID в .env: {e}")
+            # Сохраняем в БД для персистентности на Railway
+            await set_db_spreadsheet_id(spreadsheet_id)
+            logging.info(f"Создана новая таблица: {spreadsheet_id}")
 
         # 2. Подготовка заголовков и данных
         headers = ["Telegram ID", "Username", "First Name", "Билеты (всего)", "Квиз (баллы)", "Дата регистрации", "Последняя активность"]
         values = [headers]
         for row in data:
-            # Превращаем None в пустые строки для красоты
             values.append([str(item) if item is not None else "" for item in row])
 
-        # 3. Запись данных (очищаем и записываем заново для простоты обновления структуры)
+        # 3. Запись данных
         body = {
             'values': values
         }
 
-        # Очищаем лист перед записью
         sheets_service.spreadsheets().values().clear(
             spreadsheetId=spreadsheet_id,
             range="Sheet1!A1:Z10000"
         ).execute()
 
-        # Записываем новые данные
         sheets_service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range="Sheet1!A1",
@@ -82,7 +90,7 @@ async def export_to_google_sheets(data):
             body=body
         ).execute()
 
-        # Форматирование заголовка (опционально, жирный шрифт)
+        # Форматирование заголовка
         requests = [
             {
                 "repeatCell": {
@@ -102,12 +110,11 @@ async def export_to_google_sheets(data):
             body={"requests": requests}
         ).execute()
 
-        # Возвращаем ссылку на таблицу
         return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}", None
 
     except HttpError as err:
         logging.error(f"Ошибка Google API: {err}")
-        return None, f"Ошибка Google Sheets API: {err.reason}"
+        return None, f"Ошибка API: {err.reason}"
     except Exception as e:
         logging.error(f"Ошибка экспорта: {e}")
         return None, f"Ошибка: {str(e)}"
