@@ -83,17 +83,22 @@ async def init_db():
         # Инициализация настроек
         await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('is_closed', '0')")
 
-        # Пополнение пула билетов, если он пуст и мы еще не начали выдачу
+        # Пополнение пула билетов
         async with db.execute("SELECT COUNT(*) FROM tickets") as cursor:
             issued_count = (await cursor.fetchone())[0]
 
         async with db.execute("SELECT COUNT(*) FROM available_tickets") as cursor:
             available_count = (await cursor.fetchone())[0]
 
-        if issued_count == 0 and available_count == 0:
-            # Заполняем пул номерами 1-3500
-            for i in range(1, 3501):
-                await db.execute("INSERT INTO available_tickets (ticket_number) VALUES (?)", (i,))
+        current_total_pool = issued_count + available_count
+        if current_total_pool < TICKET_LIMIT:
+            # Находим максимальный номер, который уже есть (в выданных или доступных)
+            async with db.execute("SELECT MAX(ticket_number) FROM (SELECT ticket_number FROM tickets UNION SELECT ticket_number FROM available_tickets)") as cursor:
+                max_num = (await cursor.fetchone())[0] or 0
+
+            # Дозаполняем пул до TICKET_LIMIT
+            for i in range(max_num + 1, TICKET_LIMIT + 1):
+                await db.execute("INSERT OR IGNORE INTO available_tickets (ticket_number) VALUES (?)", (i,))
 
         await db.commit()
 
@@ -116,23 +121,15 @@ async def issue_random_tickets(user_id, count, ticket_type):
         await db.commit()
     return issued_tickets
 
-async def get_next_ticket_id():
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT value FROM settings WHERE key = 'next_ticket_id'") as cursor:
-            row = await cursor.fetchone()
-            return int(row[0])
-
-
 async def add_user(user_id, username, full_name):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("INSERT OR IGNORE INTO users (user_id, username, full_name) VALUES (?, ?, ?)",
-                         (user_id, username, full_name))
-        await db.commit()
-
-async def add_ticket(user_id, ticket_number, ticket_type):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("INSERT INTO tickets (user_id, ticket_number, type) VALUES (?, ?, ?)",
-                         (user_id, ticket_number, ticket_type))
+        await db.execute("""
+            INSERT INTO users (user_id, username, full_name)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                username = excluded.username,
+                full_name = excluded.full_name
+        """, (user_id, username, full_name))
         await db.commit()
 
 async def get_user_tickets(user_id):

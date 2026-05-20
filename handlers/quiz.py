@@ -2,7 +2,7 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from handlers.quiz_states import QuizStates
-from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, issue_random_tickets, get_total_tickets_count, close_collection, is_collection_closed, mark_questions_as_seen, check_and_trigger_closure
+from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, issue_random_tickets, get_total_tickets_count, close_collection, is_collection_closed, mark_questions_as_seen, check_and_trigger_closure, add_user
 from keyboards.menu import get_main_menu_keyboard
 from utils.generator import generate_questions
 import asyncio
@@ -210,6 +210,13 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     elif score == 8: bonus = 1
 
     msg = f"🏁 <b>Квиз завершён!</b>\n\nТвой результат: <b>{score}/10</b>\n\n"
+
+    # Регистрация на всякий случай
+    user_data = (await state.get_data()).get("user_data")
+    # В aiogram FSM можно хранить данные пользователя, но мы просто используем текущие если есть
+    # Однако, в CallbackQuery у нас есть доступ к пользователю.
+    # Но finish_quiz_logic вызывается из safe_send_question, где у нас нет callback.
+    # В aiogram 3 обычно используют middleware или передают user в функцию.
 
     if bonus > 0:
         issued = await issue_random_tickets(user_id, bonus, "bonus")
