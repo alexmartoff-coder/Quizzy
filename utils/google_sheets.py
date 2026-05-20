@@ -24,6 +24,7 @@ def get_service():
         info = json.loads(GOOGLE_CREDS_JSON)
         client_email = info.get("client_email")
         credentials = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+        # cache_discovery=False подавляет предупреждения о file_cache
         sheets_service = build('sheets', 'v4', credentials=credentials, cache_discovery=False)
         drive_service = build('drive', 'v3', credentials=credentials, cache_discovery=False)
         return sheets_service, drive_service, client_email
@@ -33,49 +34,53 @@ def get_service():
 
 async def ensure_sheet_exists(sheets_service, spreadsheet_id):
     """Проверяет существование листа SHEET_NAME и создает его, если он отсутствует."""
-    spreadsheet = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-    sheets = spreadsheet.get('sheets', [])
-    sheet_titles = [s.get('properties', {}).get('title') for s in sheets]
+    try:
+        spreadsheet = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        sheets = spreadsheet.get('sheets', [])
+        sheet_titles = [s.get('properties', {}).get('title') for s in sheets]
 
-    if SHEET_NAME not in sheet_titles:
-        body = {
-            'requests': [
-                {
-                    'addSheet': {
-                        'properties': {
-                            'title': SHEET_NAME
+        headers = ["Telegram ID", "Username", "First Name", "Билеты (всего)", "Квиз (баллы)", "Дата регистрации", "Последняя активность"]
+
+        if SHEET_NAME not in sheet_titles:
+            body = {
+                'requests': [
+                    {
+                        'addSheet': {
+                            'properties': {
+                                'title': SHEET_NAME
+                            }
                         }
                     }
-                }
-            ]
-        }
-        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body).execute()
+                ]
+            }
+            sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body).execute()
 
-        # Сразу записываем заголовки
-        headers = ["Telegram ID", "Username", "First Name", "Билеты (всего)", "Квиз (баллы)", "Дата регистрации", "Последняя активность"]
-        sheets_service.spreadsheets().values().update(
-            spreadsheetId=spreadsheet_id,
-            range=f"'{SHEET_NAME}'!A1",
-            valueInputOption="RAW",
-            body={'values': [headers]}
-        ).execute()
+            # Сразу записываем заголовки
+            sheets_service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=f"'{SHEET_NAME}'!A1",
+                valueInputOption="RAW",
+                body={'values': [headers]}
+            ).execute()
 
-        # Форматирование заголовка
-        res = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-        new_sheet_id = next(s['properties']['sheetId'] for s in res['sheets'] if s['properties']['title'] == SHEET_NAME)
+            # Форматирование заголовка
+            res = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+            new_sheet_id = next(s['properties']['sheetId'] for s in res['sheets'] if s['properties']['title'] == SHEET_NAME)
 
-        format_body = {
-            "requests": [{
-                "repeatCell": {
-                    "range": {"sheetId": new_sheet_id, "startRowIndex": 0, "endRowIndex": 1},
-                    "cell": {"userEnteredFormat": {"textFormat": {"bold": True}, "horizontalAlignment": "CENTER"}},
-                    "fields": "userEnteredFormat(textFormat,horizontalAlignment)"
-                }
-            }]
-        }
-        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=format_body).execute()
+            format_body = {
+                "requests": [{
+                    "repeatCell": {
+                        "range": {"sheetId": new_sheet_id, "startRowIndex": 0, "endRowIndex": 1},
+                        "cell": {"userEnteredFormat": {"textFormat": {"bold": True}, "horizontalAlignment": "CENTER"}},
+                        "fields": "userEnteredFormat(textFormat,horizontalAlignment)"
+                    }
+                }]
+            }
+            sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=format_body).execute()
         return True
-    return False
+    except HttpError as e:
+        logging.error(f"Error ensuring sheet exists: {e}")
+        raise e
 
 async def export_to_google_sheets(data):
     """
@@ -92,19 +97,19 @@ async def export_to_google_sheets(data):
         # Убеждаемся, что лист существует
         await ensure_sheet_exists(sheets_service, spreadsheet_id)
 
-        # 1. Читаем текущие данные из таблицы (столбец A для ID)
+        # 1. Читаем все данные с листа для точного сопоставления
         result = sheets_service.spreadsheets().values().get(
             spreadsheetId=spreadsheet_id,
-            range=f"'{SHEET_NAME}'!A:A"
+            range=f"'{SHEET_NAME}'!A:G"
         ).execute()
 
         current_rows = result.get('values', [])
         existing_users = {}
         for idx, row in enumerate(current_rows):
-            if row and row[0].isdigit():
-                existing_users[row[0]] = idx + 1
+            if row and len(row) > 0 and row[0].isdigit():
+                existing_users[row[0]] = idx + 1 # row_index 1-based
 
-        # 2. Распределяем данные на обновление и добавление
+        # 2. Распределяем данные
         rows_to_update = []
         rows_to_append = []
 
@@ -121,7 +126,7 @@ async def export_to_google_sheets(data):
             else:
                 rows_to_append.append(formatted_row)
 
-        # 3. Выполняем обновления
+        # 3. Выполняем обновления (batchUpdate для оптимизации)
         if rows_to_update:
             sheets_service.spreadsheets().values().batchUpdate(
                 spreadsheetId=spreadsheet_id,

@@ -39,7 +39,11 @@ async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
 @payment_router.message(F.successful_payment)
 async def successful_payment_handler(message: Message):
     user_id = message.from_user.id
+    user = message.from_user
     print(f"🎉 SUCCESSFUL PAYMENT | User: {user_id}")
+
+    # Регистрация пользователя перед выдачей билета
+    await add_user(user_id, user.username, user.full_name)
 
     await message.answer("✅ Оплата прошла успешно! Начинаем квиз...")
 
