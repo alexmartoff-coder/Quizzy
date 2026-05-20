@@ -6,13 +6,19 @@ import config
 
 payment_router = Router(name="payment_router")
 
-@payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в квиз"))
+@payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в квиз за iPhone 17"))
 async def start_payment(message: Message):
     print(f"💰 PAYMENT START | User: {message.from_user.id}")
 
     # Проверка лимита билетов
     if await is_collection_closed():
-        await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 3500+ билетов.")
+        text = (
+            "🎉 Сбор билетов завершён досрочно!\n\n"
+            f"Мы набрали {config.TICKET_LIMIT}+ билетов. Спасибо всем участникам!\n\n"
+            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Следи за обновлениями!"
+        )
+        await message.answer(text)
         return
 
     await message.answer("🧾 Формируем счёт на 99 RUB...")
@@ -41,8 +47,6 @@ async def successful_payment_handler(message: Message):
     user_id = message.from_user.id
     print(f"🎉 SUCCESSFUL PAYMENT | User: {user_id}")
 
-    await message.answer("✅ Оплата прошла успешно! Начинаем квиз...")
-
     # Логируем в БД и выдаем билет
     sp = message.successful_payment
     await log_payment(
@@ -53,7 +57,11 @@ async def successful_payment_handler(message: Message):
         sp.provider_payment_charge_id
     )
 
-    await issue_random_tickets(user_id, 1, "base")
+    tickets = await issue_random_tickets(user_id, 1, "base")
+    ticket_num = tickets[0] if tickets else 0
+
+    await message.answer(f"✅ Оплата прошла! Твой базовый билет №{ticket_num:04d} получен")
+
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
 
     await message.answer("Начинаем квиз за iPhone 17 PRO 256 Гб....", reply_markup=get_start_quiz_keyboard())

@@ -51,7 +51,7 @@ async def safe_send_question(bot: Bot, state: FSMContext, user_id: int, q_idx: i
     question = questions[q_idx]
     # Используем HTML для надежности
     q_text = html.escape(question['question'])
-    text = f"❓ <b>Вопрос {q_idx + 1}/10</b>\n\n{q_text}\n\n⏱ У тебя 20 секунд!"
+    text = f"❓ <b>Вопрос {q_idx + 1}/10</b>\n\n{q_text}\n\n⏱ У тебя 30 секунд!"
 
     try:
         msg = await bot.send_message(
@@ -76,7 +76,7 @@ async def safe_send_question(bot: Bot, state: FSMContext, user_id: int, q_idx: i
 
 async def quiz_timer_logic(bot: Bot, state: FSMContext, user_id: int, q_idx: int, msg_id: int):
     try:
-        await asyncio.sleep(20)
+        await asyncio.sleep(30)
 
         data = await state.get_data()
         current_state = await state.get_state()
@@ -214,15 +214,19 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     if bonus > 0:
         issued = await issue_random_tickets(user_id, bonus, "bonus")
         if issued:
+            total_tickets_this_round = 1 + len(issued)
             if len(issued) == 1:
-                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусный билет</b> (№{issued[0]:04d})!"
+                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусный билет</b> (№{issued[0]:04d})!\n"
             else:
                 tickets_str = ", ".join([f"№{t:04d}" for t in issued])
-                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусных билета</b> ({tickets_str})!"
+                msg += f"🎉 Ты получаешь <b>{len(issued)} бонусных билета</b> ({tickets_str})!\n"
+            msg += f"Итого за эту попытку: <b>{total_tickets_this_round}</b> билетов (1 базовый + {len(issued)} бонусных)."
         else:
-            msg += "Бонусные билеты закончились!"
+            msg += "Бонусные билеты закончились!\n"
+            msg += "Итого за эту попытку: <b>1</b> билет (базовый)."
     else:
-        msg += "Бонусных билетов в этот раз нет. Попробуй еще раз!"
+        msg += "Бонусных билетов в этот раз нет. Попробуй еще раз!\n"
+        msg += "Итого за эту попытку: <b>1</b> билет (базовый)."
 
     await finish_quiz_session(user_id)
     await state.clear()
