@@ -51,7 +51,7 @@ async def safe_send_question(bot: Bot, state: FSMContext, user_id: int, q_idx: i
     question = questions[q_idx]
     # Используем HTML для надежности
     q_text = html.escape(question['question'])
-    text = f"❓ <b>Вопрос {q_idx + 1}/10</b>\n\n{q_text}\n\n⏱ У тебя 20 секунд!"
+    text = f"❓ <b>Вопрос {q_idx + 1}/10</b>\n\n{q_text}\n\n⏱ У тебя 30 секунд!"
 
     try:
         msg = await bot.send_message(
@@ -76,7 +76,7 @@ async def safe_send_question(bot: Bot, state: FSMContext, user_id: int, q_idx: i
 
 async def quiz_timer_logic(bot: Bot, state: FSMContext, user_id: int, q_idx: int, msg_id: int):
     try:
-        await asyncio.sleep(20)
+        await asyncio.sleep(30)
 
         data = await state.get_data()
         current_state = await state.get_state()
@@ -103,6 +103,7 @@ async def quiz_timer_logic(bot: Bot, state: FSMContext, user_id: int, q_idx: int
 
             next_idx = q_idx + 1
             await update_quiz_question(user_id, next_idx)
+            await asyncio.sleep(3.0)
             await safe_send_question(bot, state, user_id, next_idx)
 
     except asyncio.CancelledError:
@@ -186,7 +187,8 @@ async def process_quiz_answer(callback: CallbackQuery, state: FSMContext):
 
     next_idx = q_idx_in_cb + 1
     await update_quiz_question(user_id, next_idx)
-    await asyncio.sleep(1.5)
+    # Даем пользователю время прочитать объяснение
+    await asyncio.sleep(3.0)
     await safe_send_question(callback.bot, state, user_id, next_idx)
 
 @router.callback_query(F.data.startswith("qans_"))
@@ -209,14 +211,8 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     elif score == 9: bonus = 2
     elif score == 8: bonus = 1
 
+    total_earned = 1 + bonus # 1 базовый + бонусные
     msg = f"🏁 <b>Квиз завершён!</b>\n\nТвой результат: <b>{score}/10</b>\n\n"
-
-    # Регистрация на всякий случай
-    user_data = (await state.get_data()).get("user_data")
-    # В aiogram FSM можно хранить данные пользователя, но мы просто используем текущие если есть
-    # Однако, в CallbackQuery у нас есть доступ к пользователю.
-    # Но finish_quiz_logic вызывается из safe_send_question, где у нас нет callback.
-    # В aiogram 3 обычно используют middleware или передают user в функцию.
 
     if bonus > 0:
         issued = await issue_random_tickets(user_id, bonus, "bonus")
@@ -231,8 +227,12 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     else:
         msg += "Бонусных билетов в этот раз нет. Попробуй еще раз!"
 
+    msg += f"\n\nОбщее количество билетов за эту попытку: <b>{total_earned}</b>"
+
     await finish_quiz_session(user_id)
     await state.clear()
+
+    await check_and_trigger_closure(bot)
 
     await bot.send_message(
         chat_id=user_id,
@@ -240,5 +240,3 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
         reply_markup=await get_main_menu_keyboard(user_id),
         parse_mode="HTML"
     )
-
-    await check_and_trigger_closure(bot)

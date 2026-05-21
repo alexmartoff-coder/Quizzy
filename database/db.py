@@ -1,8 +1,8 @@
 import aiosqlite
 import os
-from datetime import datetime
+from datetime import datetime, date
 from aiogram import Bot
-from config import TICKET_LIMIT, CHANNEL_ID
+from config import TICKET_LIMIT, CHANNEL_ID, CLOSURE_DATE
 
 DB_PATH = "bot_database.db"
 
@@ -242,12 +242,16 @@ async def check_and_trigger_closure(bot: Bot):
     """Проверяет условия закрытия и выполняет действия по закрытию."""
     total = await get_total_tickets_count()
 
-    if total >= TICKET_LIMIT and not await is_collection_closed():
+    # Парсим дату закрытия из конфига
+    closure_date_obj = datetime.strptime(CLOSURE_DATE, "%Y-%m-%d").date()
+    is_date_reached = date.today() >= closure_date_obj
+
+    if (total >= TICKET_LIMIT or is_date_reached) and not await is_collection_closed():
         await close_collection()
         try:
             text = (
                 "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 билетов.\n"
+                f"Мы достигли лимита в {TICKET_LIMIT} билетов раньше срока.\n"
                 "Спасибо всем, кто принял участие!\n\n"
                 "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
             )

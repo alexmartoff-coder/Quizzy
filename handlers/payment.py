@@ -12,7 +12,12 @@ async def start_payment(message: Message):
 
     # Проверка лимита билетов
     if await is_collection_closed():
-        await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 3500+ билетов.")
+        await message.answer(
+            "🎉 Сбор билетов завершён досрочно!\n\n"
+            f"Мы набрали {config.TICKET_LIMIT}+ билетов. Спасибо всем участникам!\n\n"
+            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Следи за обновлениями!"
+        )
         return
 
     await message.answer("🧾 Формируем счёт на 99 RUB...")
@@ -45,8 +50,6 @@ async def successful_payment_handler(message: Message):
     # Регистрация пользователя перед выдачей билета
     await add_user(user_id, user.username, user.full_name)
 
-    await message.answer("✅ Оплата прошла успешно! Начинаем квиз...")
-
     # Логируем в БД и выдаем билет
     sp = message.successful_payment
     await log_payment(
@@ -57,10 +60,14 @@ async def successful_payment_handler(message: Message):
         sp.provider_payment_charge_id
     )
 
-    await issue_random_tickets(user_id, 1, "base")
+    issued = await issue_random_tickets(user_id, 1, "base")
+    ticket_num_str = f"№{issued[0]:04d}" if issued else "???"
+
+    await message.answer(f"Оплата прошла! Твой базовый билет {ticket_num_str} получен")
+
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
 
-    await message.answer("Начинаем квиз за iPhone 17 PRO 256 Гб....", reply_markup=get_start_quiz_keyboard())
+    await message.answer("Начинаем квиз за iPhone 17....", reply_markup=get_start_quiz_keyboard())
 
     # Проверка лимита
     await check_and_trigger_closure(message.bot)
