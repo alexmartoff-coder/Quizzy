@@ -11,4 +11,7 @@ venv.bak/
 credentials.json
 .env
 database/*.db
+bot_database.db
+bot.log
 __pycache__/
+*.pyc

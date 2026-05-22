@@ -6,21 +6,33 @@ import config
 
 payment_router = Router(name="payment_router")
 
-@payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в квиз"))
+@payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в Квиз за iPhone 17") | F.text.contains("Играть в квиз"))
 async def start_payment(message: Message):
     print(f"💰 PAYMENT START | User: {message.from_user.id}")
 
     # Проверка лимита билетов
     if await is_collection_closed():
-        await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 3500+ билетов.")
+        await message.answer(
+            "🎉 Сбор билетов завершён досрочно!\n\n"
+            "Мы набрали 2500+ билетов. Спасибо всем участникам!\n\n"
+            "Розыгрыш iPhone 17 состоится в ближайшее время в прямом эфире в канале @mozgo_boy.\n\n"
+            "Следи за обновлениями!"
+        )
         return
 
-    await message.answer("🧾 Формируем счёт на 99 RUB...")
+    await message.answer(
+        "<b>Участвуй в розыгрыше iPhone 17!</b>\n\n"
+        "Оплати 99 ₽ и получи:\n"
+        "✅ 1 гарантированный базовый билет\n"
+        "✅ Доступ к квизу, где можно выиграть до +3 бонусных билетов (при 8/9/10 правильных ответах).\n\n"
+        "Сбор билетов остановится при достижении 2500 шт. или 10 апреля 2026.",
+        parse_mode="HTML"
+    )
 
     try:
         await message.answer_invoice(
-            title="Билет участия в розыгрыше",
-            description="1 билет + доступ к квизу",
+            title="Билет участия в розыгрыше iPhone 17",
+            description="1 базовый билет + доступ к квизу за бонусами",
             provider_token=config.YOOKASSA_PROVIDER_TOKEN,
             currency="RUB",
             prices=[LabeledPrice(label="Билет", amount=9900)],
@@ -45,8 +57,6 @@ async def successful_payment_handler(message: Message):
     # Регистрация пользователя перед выдачей билета
     await add_user(user_id, user.username, user.full_name)
 
-    await message.answer("✅ Оплата прошла успешно! Начинаем квиз...")
-
     # Логируем в БД и выдаем билет
     sp = message.successful_payment
     await log_payment(
@@ -57,10 +67,14 @@ async def successful_payment_handler(message: Message):
         sp.provider_payment_charge_id
     )
 
-    await issue_random_tickets(user_id, 1, "base")
+    tickets = await issue_random_tickets(user_id, 1, "base")
+    ticket_num = tickets[0] if tickets else 0
+
+    await message.answer(f"✅ Оплата прошла! Твой базовый билет №{ticket_num:04d} получен")
+
     await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
 
-    await message.answer("Начинаем квиз за iPhone 17 PRO 256 Гб....", reply_markup=get_start_quiz_keyboard())
+    await message.answer("Начинаем квиз за iPhone 17....", reply_markup=get_start_quiz_keyboard())
 
     # Проверка лимита
     await check_and_trigger_closure(message.bot)

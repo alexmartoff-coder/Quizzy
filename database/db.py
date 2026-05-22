@@ -2,7 +2,7 @@ import aiosqlite
 import os
 from datetime import datetime
 from aiogram import Bot
-from config import TICKET_LIMIT, CHANNEL_ID
+from config import TICKET_LIMIT, CHANNEL_ID, CLOSURE_DATE
 
 DB_PATH = "bot_database.db"
 
@@ -99,6 +99,9 @@ async def init_db():
             # Дозаполняем пул до TICKET_LIMIT
             for i in range(max_num + 1, TICKET_LIMIT + 1):
                 await db.execute("INSERT OR IGNORE INTO available_tickets (ticket_number) VALUES (?)", (i,))
+        elif current_total_pool > TICKET_LIMIT:
+            # Если лимит уменьшился, удаляем лишние невыданные билеты
+            await db.execute("DELETE FROM available_tickets WHERE ticket_number > ?", (TICKET_LIMIT,))
 
         await db.commit()
 
@@ -190,11 +193,18 @@ async def get_leaderboard(limit=20):
         """, (limit,)) as cursor:
             return await cursor.fetchall()
 
-async def is_collection_closed():
+async def _is_db_closed():
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
             row = await cursor.fetchone()
             return row[0] == '1'
+
+async def is_collection_closed():
+    # Проверка по дате
+    if datetime.now().strftime('%Y-%m-%d') >= CLOSURE_DATE:
+        return True
+
+    return await _is_db_closed()
 
 async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -241,16 +251,28 @@ async def add_system_log(user_id, event, details=None):
 async def check_and_trigger_closure(bot: Bot):
     """Проверяет условия закрытия и выполняет действия по закрытию."""
     total = await get_total_tickets_count()
+    current_date = datetime.now().strftime('%Y-%m-%d')
 
-    if total >= TICKET_LIMIT and not await is_collection_closed():
+    # Условие закрытия: достигнут лимит или наступила дата
+    should_close = total >= TICKET_LIMIT or current_date >= CLOSURE_DATE
+
+    if should_close and not await _is_db_closed():
         await close_collection()
         try:
-            text = (
-                "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 билетов.\n"
-                "Спасибо всем, кто принял участие!\n\n"
-                "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
-            )
+            if total >= TICKET_LIMIT:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    f"Мы достигли лимита в {TICKET_LIMIT} билетов раньше срока.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
+            else:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    "Время сбора билетов истекло.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
             await bot.send_message(chat_id=CHANNEL_ID, text=text)
         except Exception as e:
             import logging
