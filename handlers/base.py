@@ -1,75 +1,72 @@
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
-from database.db import add_user, get_user_tickets, get_leaderboard, is_collection_closed, check_and_trigger_closure
+from database.db import add_user, get_leaderboard, is_collection_closed, check_and_trigger_closure, get_paid_tickets_count, has_user_used_free_attempt, get_user_applications
 from keyboards.menu import get_main_menu_keyboard
+import config
 
 router = Router()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    await add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
-    # Проактивная проверка закрытия при старте
+    user_id = message.from_user.id
+    await add_user(user_id, message.from_user.username, message.from_user.full_name)
     await check_and_trigger_closure(message.bot)
+
+    kb, progress = await get_main_menu_keyboard(user_id)
+
     await message.answer(
-        "Добро пожаловать в квиз @googlestop_bot!\n\n"
-        "Участвуй в розыгрыше iPhone 17 PRO 256 Гб. Один билет стоит 99 ₽. "
-        "За хороший результат в квизе можно получить до +3 бонусных билетов!",
-        reply_markup=await get_main_menu_keyboard(message.from_user.id)
+        f"{progress}\n\n"
+        "Добро пожаловать в интеллектуальный конкурс «iPhone 17 PRO 256 Гб»!\n\n"
+        "Каждый участник получает 1 бесплатную заявку на участие.\n"
+        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).",
+        reply_markup=kb
     )
 
-@router.message(F.text == "📜 Правила розыгрыша")
+@router.message(F.text == "❓ Правила конкурса")
 async def cmd_rules(message: Message):
-    # Используем HTML для надежности отображения
     rules_html = (
-        "<b>📜 Правила розыгрыша iPhone 17 PRO 256 Гб.</b>\n\n"
-        "Участие — платное. Стоимость одной попытки — <b>99 ₽</b>.\n\n"
-        "За каждую оплату вы получаете:\n\n"
-        "✅ 1 гарантированный билет\n\n"
-        "🎁 до +3 бонусных билетов в зависимости от результата квиза:\n\n"
-        "10/10 правильных → +3 билета\n"
-        "9/10 → +2 билета\n"
-        "8/10 → +1 билет\n"
-        "менее 8 → бонусов нет\n\n"
-        "<b>Все билеты</b> (базовые + бонусные) участвуют в розыгрыше.\n\n"
-        "<b>Сбор билетов</b> автоматически прекращается, как только набрано <b>3500 билетов</b>.\n\n"
-        "После остановки сбора:\n"
-        "❌ играть больше нельзя\n"
-        "✅ можно посмотреть свои билеты, лидерборд и правила\n\n"
-        "Лидерборд отображает 20 лучших участников.\n\n"
-        "Розыгрыш проводится честно через генератор случайных чисел random.org.\n\n"
-        "Номер билета присваивается рандомно.\n\n"
-        "Прямой эфир с определением победителя состоится в канале @mozgo_boy — дата и время будут объявлены там же.\n\n"
-        "Один участник может иметь несколько попыток — чем больше билетов, тем выше шанс выиграть.\n\n"
-        "💡 <i>Чем больше правильных ответов в квизе, тем больше бонусных билетов ты получаешь — и тем выше твой шанс на iPhone 17 PRO 256 Гб.!</i>"
+        "<b>📜 Правила интеллектуального конкурса «iPhone 17 PRO 256 Гб»</b>\n\n"
+        "<b>1. Отборочный этап</b>\n"
+        "1.1. Отборочный этап заканчивается при достижении количества платных заявок, равного 3500. Бесплатные заявки не влияют на завершение этапа.\n"
+        "1.2. Каждый участник может подать одну бесплатную заявку и неограниченное количество платных (Поддержка конкурса + дополнительная попытка (99 ₽)).\n"
+        "1.3. <b>Бесплатная заявка</b> — участник проходит квиз из 10 вопросов. Для выхода в финал необходимо дать <b>9 или 10</b> правильных ответов.\n"
+        "1.4. <b>Платная заявка</b> — участник, внесший добровольную поддержку (99 руб.), получает дополнительную попытку. Для выхода в финал достаточно <b>8, 9 или 10</b> правильных ответов.\n"
+        "1.5. Если участник набирает меньше проходного балла (менее 9 для бесплатной, менее 8 для платной), заявка не становится финалистской.\n\n"
+        "<b>2. Финал</b>\n"
+        "Победитель будет определен среди финалистских заявок через генератор случайных чисел random.org.\n\n"
+        "Прямой эфир состоится в канале @mozgo_boy."
     )
     await message.answer(rules_html, parse_mode="HTML", disable_web_page_preview=True)
 
-@router.message(F.text == "🎟️ Мои билеты")
+@router.message(F.text == "👤 Мои заявки")
 async def cmd_my_tickets(message: Message):
-    tickets = await get_user_tickets(message.from_user.id)
-    if not tickets:
-        await message.answer("У тебя пока нет билетов. Нажми «🎁 Играть в квиз...» в меню, чтобы участвовать!")
+    apps = await get_user_applications(message.from_user.id)
+    if not apps:
+        await message.answer("У тебя пока нет заявок. Используй бесплатную попытку в меню!")
     else:
-        # Форматируем номера билетов как 4 цифры (0001, 0002 и т.д.)
-        tickets_str = ", ".join([f"№{t:04d}" for t in tickets])
-        await message.answer(f"Твои билеты ({len(tickets)} шт.):\n{tickets_str}")
+        text = "<b>Твои заявки:</b>\n\n"
+        for t_num, status, score in apps:
+            status_text = "⏳ Ожидает квиза" if status == "pending" else ("✅ Прошла в Финал" if status == "finalist" else "❌ Не прошла")
+            score_text = f" ({score}/10)" if score is not None else ""
+            text += f"🎫 №{t_num:05d} — {status_text}{score_text}\n"
+        await message.answer(text, parse_mode="HTML")
 
-@router.message(F.text == "🏆 Лидерборд")
+@router.message(F.text == "📊 Лидерборд")
+@router.message(F.text == "📊 Лидерборд финалистов")
 async def cmd_leaderboard(message: Message):
-    # Отображаем топ-20 лидеров
     leaders = await get_leaderboard(limit=20)
     if not leaders:
-        await message.answer("Лидерборд пока пуст.")
+        await message.answer("Лидерборд финалистов пока пуст.")
         return
 
-    text = "🏆 <b>Топ-20 участников по количеству билетов:</b>\n\n"
-    for i, (username, full_name, total, base, bonus) in enumerate(leaders, 1):
+    text = "🏆 <b>Топ-20 участников по количеству финалистских заявок:</b>\n\n"
+    for i, (username, full_name, finalist_count) in enumerate(leaders, 1):
         name = username if username else full_name
-        text += f"{i}. {name} — <b>{total}</b> бил. ({base} купл. + {bonus} бонус.)\n"
+        text += f"{i}. {name} — <b>{finalist_count}</b> фин. заявок\n"
 
     await message.answer(text, parse_mode="HTML")
 
-@router.message(F.text == "❓ Поддержка")
+@router.message(F.text == "📞 Поддержка")
 async def cmd_support(message: Message):
     await message.answer("По всем вопросам обращайтесь: sasha@cbca.ru")

@@ -63,4 +63,5 @@ async def back_to_main(message: Message):
     if message.from_user.id != OWNER_ID:
         return
 
-    await message.answer("Переходим в главное меню...", reply_markup=await get_main_menu_keyboard(message.from_user.id))
+    kb, _ = await get_main_menu_keyboard(message.from_user.id)
+    await message.answer("Переходим в главное меню...", reply_markup=kb)

@@ -2,7 +2,7 @@ import aiosqlite
 import os
 from datetime import datetime
 from aiogram import Bot
-from config import TICKET_LIMIT, CHANNEL_ID
+from config import TICKET_LIMIT, CHANNEL_ID, MAX_TICKET_NUMBER
 
 DB_PATH = "bot_database.db"
 
@@ -16,12 +16,16 @@ async def init_db():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # type: 'base' (free) or 'paid'
+        # status: 'pending' (quiz not finished), 'finalist' (passed), 'failed' (score too low)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS tickets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                ticket_number INTEGER,
+                ticket_number INTEGER UNIQUE,
                 type TEXT,
+                status TEXT DEFAULT 'pending',
+                score INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(user_id)
             )
@@ -33,9 +37,11 @@ async def init_db():
                 PRIMARY KEY (user_id, question_id)
             )
         """)
+        # quiz_sessions will now track which ticket is being processed
         await db.execute("""
             CREATE TABLE IF NOT EXISTS quiz_sessions (
                 user_id INTEGER PRIMARY KEY,
+                ticket_number INTEGER,
                 score INTEGER DEFAULT 0,
                 current_question INTEGER DEFAULT 0,
                 is_active BOOLEAN DEFAULT 0,
@@ -48,7 +54,6 @@ async def init_db():
                 value TEXT
             )
         """)
-        # YOOKASSA PAYMENT INTEGRATION
         await db.execute("""
             CREATE TABLE IF NOT EXISTS payments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,14 +67,12 @@ async def init_db():
             )
         """)
 
-        # Таблица доступных номеров для рандомной выдачи
         await db.execute("""
             CREATE TABLE IF NOT EXISTS available_tickets (
                 ticket_number INTEGER PRIMARY KEY
             )
         """)
 
-        # Таблица системных логов
         await db.execute("""
             CREATE TABLE IF NOT EXISTS system_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,46 +83,68 @@ async def init_db():
             )
         """)
 
-        # Инициализация настроек
+        # Migration: add status and score to tickets if not exists
+        try:
+            await db.execute("ALTER TABLE tickets ADD COLUMN status TEXT DEFAULT 'pending'")
+            await db.execute("ALTER TABLE tickets ADD COLUMN score INTEGER")
+        except: pass
+
+        # Migration: add ticket_number to quiz_sessions
+        try:
+            await db.execute("ALTER TABLE quiz_sessions ADD COLUMN ticket_number INTEGER")
+        except: pass
+
         await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('is_closed', '0')")
 
-        # Пополнение пула билетов
-        async with db.execute("SELECT COUNT(*) FROM tickets") as cursor:
-            issued_count = (await cursor.fetchone())[0]
+        # Пополнение пула билетов до 50000
+        async with db.execute("SELECT COUNT(*) FROM (SELECT ticket_number FROM tickets UNION SELECT ticket_number FROM available_tickets)") as cursor:
+            total_count = (await cursor.fetchone())[0]
 
-        async with db.execute("SELECT COUNT(*) FROM available_tickets") as cursor:
-            available_count = (await cursor.fetchone())[0]
-
-        current_total_pool = issued_count + available_count
-        if current_total_pool < TICKET_LIMIT:
-            # Находим максимальный номер, который уже есть (в выданных или доступных)
+        if total_count < MAX_TICKET_NUMBER:
             async with db.execute("SELECT MAX(ticket_number) FROM (SELECT ticket_number FROM tickets UNION SELECT ticket_number FROM available_tickets)") as cursor:
                 max_num = (await cursor.fetchone())[0] or 0
 
-            # Дозаполняем пул до TICKET_LIMIT
-            for i in range(max_num + 1, TICKET_LIMIT + 1):
+            # Дозаполняем пул до MAX_TICKET_NUMBER (50000)
+            for i in range(max_num + 1, MAX_TICKET_NUMBER + 1):
                 await db.execute("INSERT OR IGNORE INTO available_tickets (ticket_number) VALUES (?)", (i,))
 
         await db.commit()
 
-async def issue_random_tickets(user_id, count, ticket_type):
-    """Выдает указанное количество случайных билетов пользователю."""
-    issued_tickets = []
+async def issue_ticket(user_id, ticket_type):
+    """Выдает один случайный билет пользователю."""
     async with aiosqlite.connect(DB_PATH) as db:
-        for _ in range(count):
-            # Выбираем случайный билет из доступных
-            async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY RANDOM() LIMIT 1") as cursor:
-                row = await cursor.fetchone()
-                if row:
-                    ticket_num = row[0]
-                    # Удаляем из доступных
-                    await db.execute("DELETE FROM available_tickets WHERE ticket_number = ?", (ticket_num,))
-                    # Добавляем пользователю
-                    await db.execute("INSERT INTO tickets (user_id, ticket_number, type) VALUES (?, ?, ?)",
-                                     (user_id, ticket_num, ticket_type))
-                    issued_tickets.append(ticket_num)
+        async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY RANDOM() LIMIT 1") as cursor:
+            row = await cursor.fetchone()
+            if row:
+                ticket_num = row[0]
+                await db.execute("DELETE FROM available_tickets WHERE ticket_number = ?", (ticket_num,))
+                await db.execute("INSERT INTO tickets (user_id, ticket_number, type, status) VALUES (?, ?, ?, 'pending')",
+                                 (user_id, ticket_num, ticket_type))
+                await db.commit()
+                return ticket_num
+    return None
+
+async def update_ticket_result(ticket_number, status, score):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE tickets SET status = ?, score = ? WHERE ticket_number = ?", (status, score, ticket_number))
         await db.commit()
-    return issued_tickets
+
+async def has_user_used_free_attempt(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT COUNT(*) FROM tickets WHERE user_id = ? AND type = 'base'", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0] > 0
+
+async def get_user_applications(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT ticket_number, status, score FROM tickets WHERE user_id = ? ORDER BY created_at", (user_id,)) as cursor:
+            return await cursor.fetchall()
+
+async def get_paid_tickets_count():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT COUNT(*) FROM tickets WHERE type = 'paid'",) as cursor:
+            row = await cursor.fetchone()
+            return row[0]
 
 async def add_user(user_id, username, full_name):
     async with aiosqlite.connect(DB_PATH) as db:
@@ -132,29 +157,17 @@ async def add_user(user_id, username, full_name):
         """, (user_id, username, full_name))
         await db.commit()
 
-async def get_user_tickets(user_id):
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT ticket_number FROM tickets WHERE user_id = ? ORDER BY ticket_number", (user_id,)) as cursor:
-            rows = await cursor.fetchall()
-            return [row[0] for row in rows]
-
-async def get_total_tickets_count():
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT COUNT(*) FROM tickets") as cursor:
-            row = await cursor.fetchone()
-            return row[0]
-
-async def set_quiz_session(user_id, score=0, current_question=0, is_active=True):
+async def set_quiz_session(user_id, ticket_number, score=0, current_question=0, is_active=True):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
-            INSERT OR REPLACE INTO quiz_sessions (user_id, score, current_question, is_active)
-            VALUES (?, ?, ?, ?)
-        """, (user_id, score, current_question, is_active))
+            INSERT OR REPLACE INTO quiz_sessions (user_id, ticket_number, score, current_question, is_active)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, ticket_number, score, current_question, is_active))
         await db.commit()
 
 async def get_quiz_session(user_id):
     async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT score, current_question, is_active FROM quiz_sessions WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT score, current_question, is_active, ticket_number FROM quiz_sessions WHERE user_id = ?", (user_id,)) as cursor:
             return await cursor.fetchone()
 
 async def update_quiz_score(user_id, score):
@@ -174,18 +187,17 @@ async def finish_quiz_session(user_id):
 
 async def get_leaderboard(limit=20):
     async with aiosqlite.connect(DB_PATH) as db:
-        # Leaderboard based on number of tickets (base + bonus)
+        # Leaderboard based on number of FINALIST tickets
         async with db.execute("""
             SELECT
                 u.username,
                 u.full_name,
-                COUNT(t.id) as total_count,
-                SUM(CASE WHEN t.type = 'base' THEN 1 ELSE 0 END) as base_count,
-                SUM(CASE WHEN t.type = 'bonus' THEN 1 ELSE 0 END) as bonus_count
+                COUNT(t.id) as finalist_count
             FROM users u
             JOIN tickets t ON u.user_id = t.user_id
+            WHERE t.status = 'finalist'
             GROUP BY u.user_id
-            ORDER BY total_count DESC
+            ORDER BY finalist_count DESC
             LIMIT ?
         """, (limit,)) as cursor:
             return await cursor.fetchall()
@@ -201,12 +213,6 @@ async def close_collection():
         await db.execute("UPDATE settings SET value = '1' WHERE key = 'is_closed'")
         await db.commit()
 
-async def get_user_seen_question_ids(user_id):
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT question_id FROM user_seen_questions WHERE user_id = ?", (user_id,)) as cursor:
-            rows = await cursor.fetchall()
-            return [row[0] for row in rows]
-
 async def mark_questions_as_seen(user_id, question_ids):
     async with aiosqlite.connect(DB_PATH) as db:
         for q_id in question_ids:
@@ -214,13 +220,6 @@ async def mark_questions_as_seen(user_id, question_ids):
                              (user_id, q_id))
         await db.commit()
 
-async def clear_user_seen_questions(user_id):
-    """Сброс увиденных вопросов (например, если пул закончился)."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM user_seen_questions WHERE user_id = ?", (user_id,))
-        await db.commit()
-
-# YOOKASSA PAYMENT INTEGRATION
 async def log_payment(user_id, amount, payload, telegram_id, provider_id):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
@@ -230,7 +229,6 @@ async def log_payment(user_id, amount, payload, telegram_id, provider_id):
         await db.commit()
 
 async def add_system_log(user_id, event, details=None):
-    """Записывает системное событие в БД."""
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
             INSERT INTO system_logs (user_id, event, details)
@@ -239,17 +237,16 @@ async def add_system_log(user_id, event, details=None):
         await db.commit()
 
 async def check_and_trigger_closure(bot: Bot):
-    """Проверяет условия закрытия и выполняет действия по закрытию."""
-    total = await get_total_tickets_count()
+    total_paid = await get_paid_tickets_count()
 
-    if total >= TICKET_LIMIT and not await is_collection_closed():
+    if total_paid >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
         try:
             text = (
-                "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 билетов.\n"
+                "🔥 СБОР ЗАЯВОК ЗАВЕРШЁН!\n\n"
+                "Мы достигли лимита в 3500 платных заявок.\n"
                 "Спасибо всем, кто принял участие!\n\n"
-                "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                "Отборочный этап завершен. Скоро начнется Финал."
             )
             await bot.send_message(chat_id=CHANNEL_ID, text=text)
         except Exception as e:
