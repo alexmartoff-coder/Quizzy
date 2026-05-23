@@ -7,7 +7,7 @@ async def get_main_menu_keyboard(user_id: int = None):
 
     buttons = []
     if not closed:
-        buttons.append([KeyboardButton(text="🎁 Играть в квиз за iPhone 17 PRO 256 Гб.")])
+        buttons.append([KeyboardButton(text="🎁 Играть в Квиз за iPhone 17")])
 
     buttons.extend([
         [KeyboardButton(text="📜 Правила розыгрыша"), KeyboardButton(text="🎟️ Мои билеты")],
@@ -15,7 +15,7 @@ async def get_main_menu_keyboard(user_id: int = None):
     ])
 
     if user_id == OWNER_ID:
-        buttons.append([KeyboardButton(text="👨‍💼 Админ-панель")])
+        buttons.append([KeyboardButton(text="👨‍✈️ Админ-панель")])
 
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

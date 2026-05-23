@@ -35,7 +35,7 @@ async def main():
     else:
         logging.info(f"✅ YooKassa token loaded (prefix: {YOOKASSA_PROVIDER_TOKEN[:10]}...)")
 
-    logging.info("Starting @googlestop_bot...")
+    logging.info("Starting @prekrasenday_bot...")
 
     # Сброс вебхуков перед началом поллинга для избежания Conflict
     await bot.delete_webhook(drop_pending_updates=True)

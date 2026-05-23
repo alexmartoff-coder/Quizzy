@@ -2,7 +2,7 @@ import aiosqlite
 import os
 from datetime import datetime
 from aiogram import Bot
-from config import TICKET_LIMIT, CHANNEL_ID
+from config import TICKET_LIMIT, CHANNEL_ID, CLOSURE_DATE
 
 DB_PATH = "bot_database.db"
 
@@ -99,6 +99,9 @@ async def init_db():
             # Дозаполняем пул до TICKET_LIMIT
             for i in range(max_num + 1, TICKET_LIMIT + 1):
                 await db.execute("INSERT OR IGNORE INTO available_tickets (ticket_number) VALUES (?)", (i,))
+        elif current_total_pool > TICKET_LIMIT:
+            # Удаляем лишние билеты из доступных (те, что превышают лимит)
+            await db.execute("DELETE FROM available_tickets WHERE ticket_number > ?", (TICKET_LIMIT,))
 
         await db.commit()
 
@@ -191,10 +194,28 @@ async def get_leaderboard(limit=20):
             return await cursor.fetchall()
 
 async def is_collection_closed():
+    # Проверка флага в БД
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
             row = await cursor.fetchone()
-            return row[0] == '1'
+            if row and row[0] == '1':
+                return True
+
+    # Проверка по дате
+    try:
+        deadline = datetime.strptime(CLOSURE_DATE, "%Y-%m-%d")
+        if datetime.now() >= deadline:
+            return True
+    except Exception:
+        pass
+
+    return False
+
+async def is_collection_closed_db_only():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
+            row = await cursor.fetchone()
+            return row and row[0] == '1'
 
 async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -242,15 +263,31 @@ async def check_and_trigger_closure(bot: Bot):
     """Проверяет условия закрытия и выполняет действия по закрытию."""
     total = await get_total_tickets_count()
 
-    if total >= TICKET_LIMIT and not await is_collection_closed():
+    date_reached = False
+    try:
+        deadline = datetime.strptime(CLOSURE_DATE, "%Y-%m-%d")
+        if datetime.now() >= deadline:
+            date_reached = True
+    except Exception:
+        pass
+
+    if (total >= TICKET_LIMIT or date_reached) and not await is_collection_closed_db_only():
         await close_collection()
         try:
-            text = (
-                "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 билетов.\n"
-                "Спасибо всем, кто принял участие!\n\n"
-                "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
-            )
+            if total >= TICKET_LIMIT:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    "Мы достигли лимита в 2500 билетов раньше срока.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
+            else:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    "Сбор билетов окончен (наступило 10 апреля 2026).\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
             await bot.send_message(chat_id=CHANNEL_ID, text=text)
         except Exception as e:
             import logging
