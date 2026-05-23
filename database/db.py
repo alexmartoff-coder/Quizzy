@@ -54,18 +54,6 @@ async def init_db():
                 value TEXT
             )
         """)
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS payments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                amount INTEGER,
-                payload TEXT,
-                telegram_payment_charge_id TEXT,
-                provider_payment_charge_id TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(user_id)
-            )
-        """)
 
         await db.execute("""
             CREATE TABLE IF NOT EXISTS available_tickets (
@@ -142,12 +130,6 @@ async def get_user_applications(user_id):
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT ticket_number, status, score FROM tickets WHERE user_id = ? ORDER BY created_at", (user_id,)) as cursor:
             return await cursor.fetchall()
-
-async def get_paid_tickets_count():
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT COUNT(*) FROM tickets WHERE type = 'paid'",) as cursor:
-            row = await cursor.fetchone()
-            return row[0]
 
 async def add_user(user_id, username, full_name):
     async with aiosqlite.connect(DB_PATH) as db:
@@ -235,13 +217,6 @@ async def clear_user_seen_questions(user_id):
         await db.execute("DELETE FROM user_seen_questions WHERE user_id = ?", (user_id,))
         await db.commit()
 
-async def log_payment(user_id, amount, payload, telegram_id, provider_id):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("""
-            INSERT INTO payments (user_id, amount, payload, telegram_payment_charge_id, provider_payment_charge_id)
-            VALUES (?, ?, ?, ?, ?)
-        """, (user_id, amount, payload, telegram_id, provider_id))
-        await db.commit()
 
 async def add_system_log(user_id, event, details=None):
     async with aiosqlite.connect(DB_PATH) as db:
@@ -251,15 +226,21 @@ async def add_system_log(user_id, event, details=None):
         """, (user_id, event, details))
         await db.commit()
 
-async def check_and_trigger_closure(bot: Bot):
-    total_paid = await get_paid_tickets_count()
+async def get_total_tickets_count():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT COUNT(*) FROM tickets") as cursor:
+            row = await cursor.fetchone()
+            return row[0]
 
-    if total_paid >= TICKET_LIMIT and not await is_collection_closed():
+async def check_and_trigger_closure(bot: Bot):
+    total = await get_total_tickets_count()
+
+    if total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
         try:
             text = (
                 "🔥 СБОР ЗАЯВОК ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 платных заявок.\n"
+                "Мы достигли лимита в 3500 заявок.\n"
                 "Спасибо всем, кто принял участие!\n\n"
                 "Отборочный этап завершен. Скоро начнется Финал."
             )

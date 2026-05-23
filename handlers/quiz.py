@@ -172,13 +172,7 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     score = session[0] if session else 0
     t_num = session[3] if session else None
 
-    # Получаем тип билета
-    async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT type FROM tickets WHERE ticket_number = ?", (t_num,)) as cursor:
-            row = await cursor.fetchone()
-            t_type = row[0] if row else "base"
-
-    threshold = 9 if t_type == "base" else 8
+    threshold = 9
     is_finalist = score >= threshold
 
     if is_finalist:
@@ -191,8 +185,7 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     else:
         status = "failed"
         msg = (
-            f"К сожалению, заявка №{t_num:05d} не прошла в Финал (<b>{score}/10</b>).\n\n"
-            "Вы можете Поддержать конкурс и получить дополнительную попытку (99 ₽)"
+            f"К сожалению, заявка №{t_num:05d} не прошла в Финал (<b>{score}/10</b>)."
         )
 
     await update_ticket_result(t_num, status, score)
