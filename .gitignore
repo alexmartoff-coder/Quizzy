@@ -1,14 +1,4 @@
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-credentials.json
+bot_database.db
 .env
-database/*.db
-__pycache__/

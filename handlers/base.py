@@ -1,9 +1,8 @@
+from database.db import add_user, get_leaderboard, is_collection_closed, check_and_trigger_closure, has_user_used_free_attempt, get_user_applications, issue_ticket, set_quiz_session
+from keyboards.menu import get_main_menu_keyboard, get_start_quiz_keyboard
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
-from database.db import add_user, get_leaderboard, is_collection_closed, check_and_trigger_closure, has_user_used_free_attempt, get_user_applications, issue_ticket, set_quiz_session
-from keyboards.menu import get_main_menu_keyboard, get_start_quiz_keyboard
-import config
 
 router = Router()
 
@@ -18,31 +17,47 @@ async def cmd_start(message: Message):
     await message.answer(
         f"{progress}\n\n"
         "Добро пожаловать в интеллектуальный конкурс «iPhone 17 PRO 256 Гб»!\n\n"
-        "Каждый участник получает 1 бесплатную заявку на участие.",
+        "Каждый участник получает 1 бесплатную заявку на участие.\n"
+        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).",
         reply_markup=kb
     )
 
-@router.message(F.text == "🆓 Бесплатная заявка на участие")
-async def start_free_attempt(message: Message):
+
+@router.message(F.text == "🏆 Войти в Финал")
+async def cmd_enter_final(message: Message):
     user_id = message.from_user.id
+    from database.db_final import is_final_registration_open, has_user_registered_for_final, get_user_finalist_tickets, register_for_final
+    import aiosqlite
 
-    if await is_collection_closed():
-        await message.answer("🎉 Приём заявок завершён!")
+    if not await is_final_registration_open():
+        await message.answer("Регистрация в Финал сейчас закрыта.")
         return
 
-    if await has_user_used_free_attempt(user_id):
-        await message.answer("Вы уже использовали свою бесплатную попытку.")
+    if await has_user_registered_for_final(user_id):
+        await message.answer("Вы уже вошли в Финал.")
         return
 
-    ticket_num = await issue_ticket(user_id, "base")
-    if ticket_num:
-        await set_quiz_session(user_id, ticket_num, score=0, current_question=0, is_active=True)
-        await message.answer(
-            f"✅ Ваша заявка №{ticket_num:05d} создана.\n\nГотовы пройти квиз?",
-            reply_markup=get_start_quiz_keyboard()
-        )
-    else:
-        await message.answer("Ошибка при создании заявки.")
+    tickets = await get_user_finalist_tickets(user_id)
+    if not tickets:
+        await message.answer("У вас нет финалистских заявок.")
+        return
+
+    await register_for_final(user_id)
+
+    # Инициализация сессии финала
+    async with aiosqlite.connect("bot_database.db") as db:
+        await db.execute("INSERT OR REPLACE INTO final_sessions (user_id, current_ticket_index, is_active) VALUES (?, 0, 1)", (user_id,))
+        await db.commit()
+
+    await message.answer(
+        f"✅ Вы успешно вошли в Финал!\n"
+        f"Всего ваших заявок: {len(tickets)}\n\n"
+        f"Квиз для первой заявки №{tickets[0]:05d} начнется через мгновение..."
+    )
+
+    # Запуск первого квиза
+    from handlers.final_quiz import start_final_quiz_for_ticket
+    await start_final_quiz_for_ticket(message.bot, user_id, tickets[0])
 
 @router.message(F.text == "❓ Правила конкурса")
 async def cmd_rules(message: Message):
@@ -61,19 +76,13 @@ async def cmd_rules(message: Message):
 
 @router.message(F.text == "👤 Мои заявки")
 async def cmd_my_tickets(message: Message):
-    # Получаем заявки с информацией о типе (платная/бесплатная)
-    from database.db import DB_PATH
-    import aiosqlite
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT ticket_number, status, score, type FROM tickets WHERE user_id = ? ORDER BY created_at", (message.from_user.id,)) as cursor:
-            apps = await cursor.fetchall()
+    apps = await get_user_applications(message.from_user.id)
 
     if not apps:
         await message.answer("У тебя пока нет заявок. Используй бесплатную попытку в меню!")
     else:
         text = "<b>Твои заявки:</b>\n\n"
-        for t_num, status, score, t_type in apps:
-            type_tag = " (Платная)" if t_type == "paid" else ""
+        for t_num, status, score in apps:
             if status == "pending":
                 status_text = "⏳ Ожидает квиза"
                 score_text = ""
@@ -84,7 +93,7 @@ async def cmd_my_tickets(message: Message):
                 status_text = "— Не прошла в финал"
                 score_text = f"\nРезультат: {score}/10"
 
-            text += f"🎫 №{t_num:05d}{type_tag} {status_text}{score_text}\n\n"
+            text += f"🎫 №{t_num:05d} {status_text}{score_text}\n\n"
         await message.answer(text, parse_mode="HTML")
 
 @router.message(F.text == "📊 Лидерборд")

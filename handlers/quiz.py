@@ -109,7 +109,6 @@ async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):
     loading = await callback.message.answer("🔄 Подбираем вопросы...")
 
     try:
-        from utils.generator import generate_questions
         from database.db import mark_questions_as_seen
         questions = await generate_questions(user_id, 10)
         await state.update_data(current_questions=questions)
@@ -172,7 +171,12 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     score = session[0] if session else 0
     t_num = session[3] if session else None
 
-    threshold = 9
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT type FROM tickets WHERE ticket_number = ?", (t_num,)) as cursor:
+            row = await cursor.fetchone()
+            t_type = row[0] if row else "base"
+
+    threshold = 9 if t_type == "base" else 8
     is_finalist = score >= threshold
 
     if is_finalist:
@@ -185,7 +189,8 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     else:
         status = "failed"
         msg = (
-            f"К сожалению, заявка №{t_num:05d} не прошла в Финал (<b>{score}/10</b>)."
+            f"К сожалению, заявка №{t_num:05d} не прошла в Финал (<b>{score}/10</b>).\n\n"
+            "Вы можете Поддержать конкурс и получить дополнительную попытку (99 ₽)"
         )
 
     await update_ticket_result(t_num, status, score)

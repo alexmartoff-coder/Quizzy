@@ -8,11 +8,6 @@ async def get_total_users_count():
             return row[0]
 
 async def get_all_users_data():
-    """
-    Возвращает данные всех пользователей для выгрузки в Google Sheets.
-    Столбцы: Telegram ID, Username, First Name, Билеты (всего),
-    Правильных ответов в квизе (последний), Дата регистрации, Последняя активность
-    """
     async with aiosqlite.connect(DB_PATH) as db:
         query = """
             SELECT
