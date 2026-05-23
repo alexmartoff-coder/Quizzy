@@ -1,29 +1,53 @@
 from aiogram import Router, F
 from aiogram.types import Message, PreCheckoutQuery, LabeledPrice
-from database.db import add_user, issue_random_tickets, set_quiz_session, is_collection_closed, check_and_trigger_closure, log_payment
-from keyboards.menu import get_start_quiz_keyboard
+from database.db import add_user, issue_ticket, set_quiz_session, is_collection_closed, check_and_trigger_closure, log_payment
+from keyboards.menu import get_start_quiz_keyboard, get_main_menu_keyboard
 import config
 
 payment_router = Router(name="payment_router")
 
-@payment_router.message(F.text.contains("Участвовать") | F.text.contains("Играть в квиз"))
+@payment_router.message(F.text == "🆓 Бесплатная заявка на участие")
+async def start_free_attempt(message: Message):
+    user_id = message.from_user.id
+
+    # Проверка лимита билетов
+    if await is_collection_closed():
+        await message.answer("🎉 Приём заявок завершён!")
+        return
+
+    from database.db import has_user_used_free_attempt
+    if await has_user_used_free_attempt(user_id):
+        await message.answer("Вы уже использовали свою бесплатную попытку.")
+        return
+
+    ticket_num = await issue_ticket(user_id, "base")
+    if ticket_num:
+        await set_quiz_session(user_id, ticket_num, score=0, current_question=0, is_active=True)
+        await message.answer(
+            f"✅ Ваша заявка №{ticket_num:05d} создана.\n\nГотовы пройти квиз?",
+            reply_markup=get_start_quiz_keyboard()
+        )
+    else:
+        await message.answer("Ошибка при создании заявки.")
+
+@payment_router.message(F.text.contains("Поддержка конкурса") | F.text.contains("99 ₽"))
 async def start_payment(message: Message):
     print(f"💰 PAYMENT START | User: {message.from_user.id}")
 
     # Проверка лимита билетов
     if await is_collection_closed():
-        await message.answer("🎉 Сбор билетов завершён досрочно! Мы набрали 3500+ билетов.")
+        await message.answer("🎉 Приём заявок завершён!")
         return
 
     await message.answer("🧾 Формируем счёт на 99 RUB...")
 
     try:
         await message.answer_invoice(
-            title="Билет участия в розыгрыше",
-            description="1 билет + доступ к квизу",
+            title="Поддержка конкурса + попытка",
+            description="Дополнительная попытка в конкурсе iPhone 17 PRO 256 Гб.",
             provider_token=config.YOOKASSA_PROVIDER_TOKEN,
             currency="RUB",
-            prices=[LabeledPrice(label="Билет", amount=9900)],
+            prices=[LabeledPrice(label="Поддержка", amount=9900)],
             payload="ticket_purchase"
         )
         print(f"✅ INVOICE SENT | User: {message.from_user.id}")
@@ -42,10 +66,9 @@ async def successful_payment_handler(message: Message):
     user = message.from_user
     print(f"🎉 SUCCESSFUL PAYMENT | User: {user_id}")
 
-    # Регистрация пользователя перед выдачей билета
     await add_user(user_id, user.username, user.full_name)
 
-    await message.answer("✅ Оплата прошла успешно! Начинаем квиз...")
+    await message.answer("✅ Оплата прошла успешно!")
 
     # Логируем в БД и выдаем билет
     sp = message.successful_payment
@@ -57,10 +80,15 @@ async def successful_payment_handler(message: Message):
         sp.provider_payment_charge_id
     )
 
-    await issue_random_tickets(user_id, 1, "base")
-    await set_quiz_session(user_id, score=0, current_question=0, is_active=True)
-
-    await message.answer("Начинаем квиз за iPhone 17 PRO 256 Гб....", reply_markup=get_start_quiz_keyboard())
+    ticket_num = await issue_ticket(user_id, "paid")
+    if ticket_num:
+        await set_quiz_session(user_id, ticket_num, score=0, current_question=0, is_active=True)
+        await message.answer(
+            f"Ваша платная заявка №{ticket_num:05d} создана.\n\nГотовы пройти квиз?",
+            reply_markup=get_start_quiz_keyboard()
+        )
+    else:
+        await message.answer("Ошибка при создании платной заявки.")
 
     # Проверка лимита
     await check_and_trigger_closure(message.bot)
