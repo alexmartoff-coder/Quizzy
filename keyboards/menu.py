@@ -6,8 +6,12 @@ async def get_main_menu_keyboard(user_id: int = None):
     closed = await is_collection_closed()
     paid_count = await get_paid_tickets_count()
 
-    # Визуальный счетчик с фейковым стартом
-    display_count = INITIAL_FAKE_TICKETS + paid_count
+    # Визуальный счетчик с фейковым стартом (0741)
+    if paid_count < INITIAL_FAKE_TICKETS:
+        display_count = INITIAL_FAKE_TICKETS
+    else:
+        display_count = paid_count
+
     if display_count > TICKET_LIMIT:
         display_count = TICKET_LIMIT
 
@@ -28,7 +32,7 @@ async def get_main_menu_keyboard(user_id: int = None):
         if not used_free:
             buttons.append([KeyboardButton(text="🆓 Бесплатная заявка на участие")])
 
-        buttons.append([KeyboardButton(text="💰 Поддержка конкурса + дополнительная попытка (99 ₽)")])
+        buttons.append([KeyboardButton(text="💰 Поддержать (99 ₽)")])
         buttons.append([KeyboardButton(text="📊 Лидерборд")])
     else:
         buttons.append([KeyboardButton(text="📊 Лидерборд финалистов")])
@@ -40,13 +44,6 @@ async def get_main_menu_keyboard(user_id: int = None):
 
     if user_id == OWNER_ID:
         buttons.append([KeyboardButton(text="👨‍💼 Админ-панель")])
-
-    # Добавляем прогресс-бар как текст в клавиатуру нельзя,
-    # но мы можем возвращать его в сообщении.
-    # Для aiogram 3 мы просто вернем клавиатуру, а текст сообщения сформируем в хендлере.
-    # Но пользователь просил чтобы это "выглядело" так.
-    # В aiogram ReplyKeyboardMarkup не поддерживает текст над кнопками,
-    # поэтому прогресс-бар должен быть частью сообщения, отправляемого вместе с клавиатурой.
 
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True), progress_text
 

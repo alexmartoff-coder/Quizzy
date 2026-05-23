@@ -10,6 +10,7 @@ import time
 import logging
 from config import TICKET_LIMIT, CHANNEL_ID
 import html
+import aiosqlite
 
 router = Router()
 
@@ -183,15 +184,13 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     if is_finalist:
         status = "finalist"
         msg = (
-            f"🏁 <b>Квиз завершён!</b>\n\n"
-            f"🎉 Поздравляем!\n"
+            f"🎉 <b>Поздравляем!</b>\n"
             f"Заявка №{t_num:05d} прошла в Финал!\n"
             f"Результат: <b>{score}/10</b>"
         )
     else:
         status = "failed"
         msg = (
-            f"🏁 <b>Квиз завершён!</b>\n\n"
             f"К сожалению, заявка №{t_num:05d} не прошла в Финал (<b>{score}/10</b>).\n\n"
             "Вы можете Поддержать конкурс и получить дополнительную попытку (99 ₽)"
         )
@@ -203,7 +202,7 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     kb, progress = await get_main_menu_keyboard(user_id)
     await bot.send_message(
         chat_id=user_id,
-        text=f"{progress}\n\n{msg}",
+        text=f"{msg}\n\n{progress}",
         reply_markup=kb,
         parse_mode="HTML"
     )
