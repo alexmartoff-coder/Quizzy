@@ -26,8 +26,6 @@ async def get_all_users_data():
                     SELECT MAX(last_activity) FROM (
                         SELECT created_at as last_activity FROM tickets WHERE user_id = u.user_id
                         UNION
-                        SELECT created_at as last_activity FROM payments WHERE user_id = u.user_id
-                        UNION
                         SELECT u.created_at as last_activity
                     )
                 ) as last_activity

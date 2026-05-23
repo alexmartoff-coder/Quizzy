@@ -5,7 +5,7 @@ import config
 
 class TestClosure(unittest.IsolatedAsyncioTestCase):
 
-    @patch('database.db.get_paid_tickets_count')
+    @patch('database.db.get_total_tickets_count')
     @patch('database.db.is_collection_closed')
     @patch('database.db.close_collection')
     async def test_closure_by_tickets(self, mock_close, mock_is_closed, mock_get_count):
@@ -21,7 +21,7 @@ class TestClosure(unittest.IsolatedAsyncioTestCase):
         mock_close.assert_called_once()
         mock_bot.send_message.assert_called_once()
 
-    @patch('database.db.get_paid_tickets_count')
+    @patch('database.db.get_total_tickets_count')
     @patch('database.db.is_collection_closed')
     @patch('database.db.close_collection')
     async def test_no_closure(self, mock_close, mock_is_closed, mock_get_count):
@@ -38,7 +38,7 @@ class TestClosure(unittest.IsolatedAsyncioTestCase):
         mock_bot.send_message.assert_not_called()
 
     @patch('database.db.is_collection_closed')
-    @patch('database.db.get_paid_tickets_count')
+    @patch('database.db.get_total_tickets_count')
     async def test_already_closed(self, mock_get_count, mock_is_closed):
         # Setup
         mock_is_closed.return_value = True

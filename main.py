@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
 from database.db import init_db
-from handlers import base, payment, quiz, admin
+from handlers import base, quiz, admin
 
 # Расширенное логирование в консоль и файл
 logging.basicConfig(
@@ -23,17 +23,11 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
-    # РЕГИСТРАЦИЯ РОУТЕРОВ (Платежи — приоритет №1)
-    dp.include_router(payment.payment_router)
+    # РЕГИСТРАЦИЯ РОУТЕРОВ
     dp.include_router(admin.router)
     dp.include_router(base.router)
     dp.include_router(quiz.router)
 
-    from config import YOOKASSA_PROVIDER_TOKEN
-    if not YOOKASSA_PROVIDER_TOKEN:
-        logging.warning("⚠️ YOOKASSA_PROVIDER_TOKEN is missing!")
-    else:
-        logging.info(f"✅ YooKassa token loaded (prefix: {YOOKASSA_PROVIDER_TOKEN[:10]}...)")
 
     logging.info("Starting @googlestop_bot...")
 

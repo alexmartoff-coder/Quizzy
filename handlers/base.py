@@ -1,8 +1,8 @@
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
-from database.db import add_user, get_leaderboard, is_collection_closed, check_and_trigger_closure, get_paid_tickets_count, has_user_used_free_attempt, get_user_applications
-from keyboards.menu import get_main_menu_keyboard
+from database.db import add_user, get_leaderboard, is_collection_closed, check_and_trigger_closure, has_user_used_free_attempt, get_user_applications, issue_ticket, set_quiz_session
+from keyboards.menu import get_main_menu_keyboard, get_start_quiz_keyboard
 import config
 
 router = Router()
@@ -18,10 +18,31 @@ async def cmd_start(message: Message):
     await message.answer(
         f"{progress}\n\n"
         "Добро пожаловать в интеллектуальный конкурс «iPhone 17 PRO 256 Гб»!\n\n"
-        "Каждый участник получает 1 бесплатную заявку на участие.\n"
-        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).",
+        "Каждый участник получает 1 бесплатную заявку на участие.",
         reply_markup=kb
     )
+
+@router.message(F.text == "🆓 Бесплатная заявка на участие")
+async def start_free_attempt(message: Message):
+    user_id = message.from_user.id
+
+    if await is_collection_closed():
+        await message.answer("🎉 Приём заявок завершён!")
+        return
+
+    if await has_user_used_free_attempt(user_id):
+        await message.answer("Вы уже использовали свою бесплатную попытку.")
+        return
+
+    ticket_num = await issue_ticket(user_id, "base")
+    if ticket_num:
+        await set_quiz_session(user_id, ticket_num, score=0, current_question=0, is_active=True)
+        await message.answer(
+            f"✅ Ваша заявка №{ticket_num:05d} создана.\n\nГотовы пройти квиз?",
+            reply_markup=get_start_quiz_keyboard()
+        )
+    else:
+        await message.answer("Ошибка при создании заявки.")
 
 @router.message(F.text == "❓ Правила конкурса")
 async def cmd_rules(message: Message):
@@ -30,9 +51,7 @@ async def cmd_rules(message: Message):
         "Интеллектуальный конкурс «iPhone 17 PRO 256 Гб»\n"
         "<b>Тематика квиза:</b> компания Apple, её устройства, операционные системы, технологии, история.\n"
         "<b>Приз:</b> iPhone 17 PRO 256 Гб (один экземпляр).\n"
-        "<b>Количество платных заявок для завершения Отборочного Этапа:</b> 3500. Бесплатные заявки не влияют на окончание приёма.\n"
         "<b>Старт Отборочного этапа:</b> 27 мая 2026 г. в 12:00 МСК.\n"
-        "<b>Окончание Отборочного Этапа:</b> автоматически при достижении 3500 платных заявок.\n"
         "<b>Финал:</b> следующий календарный день после завершения Отборочного этапа в 19:00 по московскому времени.\n\n"
         "Все остальные условия — в соответствии с Основными правилами интеллектуальных конкурсов, размещённых по ссылке:\n"
         "https://cbda.ru/rules/base\n\n"
