@@ -104,9 +104,12 @@ async def init_db():
             async with db.execute("SELECT MAX(ticket_number) FROM (SELECT ticket_number FROM tickets UNION SELECT ticket_number FROM available_tickets)") as cursor:
                 max_num = (await cursor.fetchone())[0] or 0
 
-            # Дозаполняем пул до MAX_TICKET_NUMBER (50000)
-            for i in range(max_num + 1, MAX_TICKET_NUMBER + 1):
-                await db.execute("INSERT OR IGNORE INTO available_tickets (ticket_number) VALUES (?)", (i,))
+            # Дозаполняем пул до MAX_TICKET_NUMBER (50000) пачками для эффективности
+            batch_size = 5000
+            for i in range(max_num + 1, MAX_TICKET_NUMBER + 1, batch_size):
+                end = min(i + batch_size, MAX_TICKET_NUMBER + 1)
+                batch = [(n,) for n in range(i, end)]
+                await db.executemany("INSERT OR IGNORE INTO available_tickets (ticket_number) VALUES (?)", batch)
 
         await db.commit()
 
@@ -213,11 +216,23 @@ async def close_collection():
         await db.execute("UPDATE settings SET value = '1' WHERE key = 'is_closed'")
         await db.commit()
 
+async def get_user_seen_question_ids(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT question_id FROM user_seen_questions WHERE user_id = ?", (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
+
 async def mark_questions_as_seen(user_id, question_ids):
     async with aiosqlite.connect(DB_PATH) as db:
         for q_id in question_ids:
             await db.execute("INSERT OR IGNORE INTO user_seen_questions (user_id, question_id) VALUES (?, ?)",
                              (user_id, q_id))
+        await db.commit()
+
+async def clear_user_seen_questions(user_id):
+    """Сброс увиденных вопросов (например, если пул закончился)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM user_seen_questions WHERE user_id = ?", (user_id,))
         await db.commit()
 
 async def log_payment(user_id, amount, payload, telegram_id, provider_id):
