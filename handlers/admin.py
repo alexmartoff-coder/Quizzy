@@ -37,6 +37,67 @@ async def admin_export_google(message: Message):
                                   parse_mode="HTML",
                                   disable_web_page_preview=False)
 
+@router.message(F.text == "🏁 Управление Финалом")
+async def admin_final_management(message: Message):
+    if message.from_user.id != OWNER_ID: return
+    from database.db_final import get_final_stats
+    stats = await get_final_stats()
+    text = (
+        f"🏁 <b>Управление Финалом</b>\n\n"
+        f"Всего финалистов (заявок): {stats['total_finalist_tickets']}\n"
+        f"Зарегистрировалось: {stats['registered_tickets']} (юзеров: {stats['registered_users']})\n"
+        f"Завершили прохождение: {stats['finished_tickets']}\n"
+    )
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Рассчитать итоги", callback_data="admin_calc_final")],
+        [InlineKeyboardButton(text="🚀 Тест: Запустить регистрацию (на 5 мин)", callback_data="admin_test_final_reg")]
+    ])
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "admin_calc_final")
+async def admin_calc_final(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+    from database.db_winner import get_preliminary_winner, check_for_ties
+    winner = await get_preliminary_winner()
+    ties = await check_for_ties()
+
+    if not winner:
+        await callback.message.answer("Результатов финала пока нет.")
+    elif ties:
+        await callback.message.answer(f"⚠️ <b>Выявлено равенство результатов!</b>\nНужен мини-квиз для {len(ties)} заявок.", parse_mode="HTML")
+    else:
+        # Победитель определен
+        from database.db import DB_PATH
+        import aiosqlite
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT username, full_name FROM users WHERE user_id = ?", (winner[1],)) as c:
+                u = await c.fetchone()
+                name = u[0] if u[0] else u[1]
+
+        text = (
+            f"🏆 <b>Победитель определён!</b>\n\n"
+            f"Участник: {name} (@{u[0]})\n"
+            f"Заявка: №{winner[0]:05d}\n"
+            f"Результат: {winner[2]}/8\n"
+            f"Время: {winner[3]:.2f} сек."
+        )
+        await callback.message.answer(text, parse_mode="HTML")
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_test_final_reg")
+async def admin_test_final_reg(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+    # Устанавливаем closed_at на "вчера 18:58", чтобы сейчас была регистрация (19:00 - 19:30)
+    from datetime import datetime, timedelta
+    fake_closed = datetime.now() - timedelta(days=1, minutes=2)
+    import aiosqlite
+    from database.db import DB_PATH
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('closed_at', ?)", (fake_closed.isoformat(),))
+        await db.commit()
+    await callback.answer("Тестовый режим регистрации включен!", show_alert=True)
+
 @router.message(F.text == "🏆 Победитель")
 async def admin_winner(message: Message):
     if message.from_user.id != OWNER_ID:

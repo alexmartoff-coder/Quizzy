@@ -16,8 +16,6 @@ async def init_db():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # type: 'base' (free) or 'paid'
-        # status: 'pending' (quiz not finished), 'finalist' (passed), 'failed' (score too low)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS tickets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,6 +28,16 @@ async def init_db():
                 FOREIGN KEY(user_id) REFERENCES users(user_id)
             )
         """)
+        # Сессии прохождения финала (пользователь проходит билеты по очереди)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS final_sessions (
+                user_id INTEGER PRIMARY KEY,
+                current_ticket_index INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT 0,
+                start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS user_seen_questions (
                 user_id INTEGER,
@@ -37,7 +45,6 @@ async def init_db():
                 PRIMARY KEY (user_id, question_id)
             )
         """)
-        # quiz_sessions will now track which ticket is being processed
         await db.execute("""
             CREATE TABLE IF NOT EXISTS quiz_sessions (
                 user_id INTEGER PRIMARY KEY,
@@ -54,13 +61,44 @@ async def init_db():
                 value TEXT
             )
         """)
-
+        # Регистрация в финале (user_id)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS final_registrations (
+                user_id INTEGER PRIMARY KEY,
+                registered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
+        # Результаты финала для каждого билета
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS final_results (
+                ticket_number INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                score INTEGER DEFAULT 0,
+                total_time FLOAT DEFAULT 0,
+                finished_at DATETIME,
+                is_mini_quiz BOOLEAN DEFAULT 0,
+                FOREIGN KEY(ticket_number) REFERENCES tickets(ticket_number),
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                amount INTEGER,
+                payload TEXT,
+                telegram_payment_charge_id TEXT,
+                provider_payment_charge_id TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS available_tickets (
                 ticket_number INTEGER PRIMARY KEY
             )
         """)
-
         await db.execute("""
             CREATE TABLE IF NOT EXISTS system_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,20 +109,8 @@ async def init_db():
             )
         """)
 
-        # Migration: add status and score to tickets if not exists
-        try:
-            await db.execute("ALTER TABLE tickets ADD COLUMN status TEXT DEFAULT 'pending'")
-            await db.execute("ALTER TABLE tickets ADD COLUMN score INTEGER")
-        except: pass
-
-        # Migration: add ticket_number to quiz_sessions
-        try:
-            await db.execute("ALTER TABLE quiz_sessions ADD COLUMN ticket_number INTEGER")
-        except: pass
-
         await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('is_closed', '0')")
 
-        # Пополнение пула билетов до 50000
         async with db.execute("SELECT COUNT(*) FROM (SELECT ticket_number FROM tickets UNION SELECT ticket_number FROM available_tickets)") as cursor:
             total_count = (await cursor.fetchone())[0]
 
@@ -92,7 +118,6 @@ async def init_db():
             async with db.execute("SELECT MAX(ticket_number) FROM (SELECT ticket_number FROM tickets UNION SELECT ticket_number FROM available_tickets)") as cursor:
                 max_num = (await cursor.fetchone())[0] or 0
 
-            # Дозаполняем пул до MAX_TICKET_NUMBER (50000) пачками для эффективности
             batch_size = 5000
             for i in range(max_num + 1, MAX_TICKET_NUMBER + 1, batch_size):
                 end = min(i + batch_size, MAX_TICKET_NUMBER + 1)
@@ -102,7 +127,6 @@ async def init_db():
         await db.commit()
 
 async def issue_ticket(user_id, ticket_type):
-    """Выдает один случайный билет пользователю."""
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY RANDOM() LIMIT 1") as cursor:
             row = await cursor.fetchone()
@@ -172,7 +196,6 @@ async def finish_quiz_session(user_id):
 
 async def get_leaderboard(limit=20):
     async with aiosqlite.connect(DB_PATH) as db:
-        # Leaderboard based on number of FINALIST tickets
         async with db.execute("""
             SELECT
                 u.username,
@@ -196,6 +219,9 @@ async def is_collection_closed():
 async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE settings SET value = '1' WHERE key = 'is_closed'")
+        # Сохраняем дату закрытия для расчета даты финала
+        now_str = datetime.now().isoformat()
+        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('closed_at', ?)", (now_str,))
         await db.commit()
 
 async def get_user_seen_question_ids(user_id):
@@ -212,11 +238,17 @@ async def mark_questions_as_seen(user_id, question_ids):
         await db.commit()
 
 async def clear_user_seen_questions(user_id):
-    """Сброс увиденных вопросов (например, если пул закончился)."""
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM user_seen_questions WHERE user_id = ?", (user_id,))
         await db.commit()
 
+async def log_payment(user_id, amount, payload, telegram_id, provider_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO payments (user_id, amount, payload, telegram_payment_charge_id, provider_payment_charge_id)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, amount, payload, telegram_id, provider_id))
+        await db.commit()
 
 async def add_system_log(user_id, event, details=None):
     async with aiosqlite.connect(DB_PATH) as db:
@@ -232,10 +264,15 @@ async def get_total_tickets_count():
             row = await cursor.fetchone()
             return row[0]
 
-async def check_and_trigger_closure(bot: Bot):
-    total = await get_total_tickets_count()
+async def get_paid_tickets_count():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT COUNT(*) FROM tickets WHERE type = 'paid'") as cursor:
+            row = await cursor.fetchone()
+            return row[0]
 
-    if total >= TICKET_LIMIT and not await is_collection_closed():
+async def check_and_trigger_closure(bot: Bot):
+    paid_total = await get_paid_tickets_count()
+    if paid_total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
         try:
             text = (
