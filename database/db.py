@@ -2,7 +2,7 @@ import aiosqlite
 import os
 from datetime import datetime
 from aiogram import Bot
-from config import TICKET_LIMIT, CHANNEL_ID, MAX_TICKET_NUMBER
+from config import TICKET_LIMIT, CHANNEL_ID, MAX_TICKET_NUMBER, CONTEST_END_DATE
 
 DB_PATH = "bot_database.db"
 
@@ -128,7 +128,7 @@ async def init_db():
 
 async def issue_ticket(user_id, ticket_type):
     async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY RANDOM() LIMIT 1") as cursor:
+        async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY ticket_number ASC LIMIT 1") as cursor:
             row = await cursor.fetchone()
             if row:
                 ticket_num = row[0]
@@ -200,12 +200,11 @@ async def get_leaderboard(limit=20):
             SELECT
                 u.username,
                 u.full_name,
-                COUNT(t.id) as finalist_count
+                COUNT(t.id) as ticket_count
             FROM users u
             JOIN tickets t ON u.user_id = t.user_id
-            WHERE t.status = 'finalist'
             GROUP BY u.user_id
-            ORDER BY finalist_count DESC
+            ORDER BY ticket_count DESC
             LIMIT ?
         """, (limit,)) as cursor:
             return await cursor.fetchall()
@@ -271,16 +270,29 @@ async def get_paid_tickets_count():
             return row[0]
 
 async def check_and_trigger_closure(bot: Bot):
-    paid_total = await get_paid_tickets_count()
-    if paid_total >= TICKET_LIMIT and not await is_collection_closed():
+    total_tickets = await get_total_tickets_count()
+
+    # Проверка даты
+    end_date = datetime.strptime(CONTEST_END_DATE, "%Y-%m-%d")
+    is_time_up = datetime.now() > end_date
+
+    if (total_tickets >= TICKET_LIMIT or is_time_up) and not await is_collection_closed():
         await close_collection()
         try:
             text = (
-                "🔥 СБОР ЗАЯВОК ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 заявок.\n"
+                "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                f"Мы достигли лимита в {TICKET_LIMIT} билетов раньше срока.\n"
                 "Спасибо всем, кто принял участие!\n\n"
-                "Отборочный этап завершен. Скоро начнется Финал."
+                "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
             )
+            if is_time_up:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    "Время приёма заявок истекло.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
+
             await bot.send_message(chat_id=CHANNEL_ID, text=text)
         except Exception as e:
             import logging
