@@ -13,6 +13,7 @@ async def init_db():
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
                 full_name TEXT,
+                accepted_rules BOOLEAN DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -109,6 +110,11 @@ async def init_db():
             )
         """)
 
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN accepted_rules BOOLEAN DEFAULT 0")
+        except:
+            pass
+
         await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('is_closed', '0')")
 
         async with db.execute("SELECT COUNT(*) FROM (SELECT ticket_number FROM tickets UNION SELECT ticket_number FROM available_tickets)") as cursor:
@@ -164,6 +170,17 @@ async def add_user(user_id, username, full_name):
                 username = excluded.username,
                 full_name = excluded.full_name
         """, (user_id, username, full_name))
+        await db.commit()
+
+async def has_accepted_rules(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT accepted_rules FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0] == 1 if row else False
+
+async def mark_rules_accepted(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE users SET accepted_rules = 1 WHERE user_id = ?", (user_id,))
         await db.commit()
 
 async def set_quiz_session(user_id, ticket_number, score=0, current_question=0, is_active=True):

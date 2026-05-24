@@ -1,7 +1,11 @@
-from database.db import add_user, get_leaderboard, is_collection_closed, check_and_trigger_closure, has_user_used_free_attempt, get_user_applications, issue_ticket, set_quiz_session
-from keyboards.menu import get_main_menu_keyboard, get_start_quiz_keyboard
+from database.db import (
+    add_user, get_leaderboard, is_collection_closed, check_and_trigger_closure,
+    has_user_used_free_attempt, get_user_applications, issue_ticket, set_quiz_session,
+    has_accepted_rules, mark_rules_accepted
+)
+from keyboards.menu import get_main_menu_keyboard, get_start_quiz_keyboard, get_rules_agreement_keyboard
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart
 
 router = Router()
@@ -12,6 +16,22 @@ async def cmd_start(message: Message):
     await add_user(user_id, message.from_user.username, message.from_user.full_name)
     await check_and_trigger_closure(message.bot)
 
+    if not await has_accepted_rules(user_id):
+        agreement_text = (
+            "Добро пожаловать в интеллектуальный конкурс «iPhone 17 PRO 256 Гб»!\n\n"
+            "Для участия вам необходимо ознакомиться с правилами.\n\n"
+            "«Я ознакомлен с <a href='https://cbda.ru/rules/base'>правилами конкурса</a> и согласен с их условиями, "
+            "включая обработку моих данных (Telegram ID, username, результаты) в целях проведения конкурса. "
+            "Данные не являются персональными по 152-ФЗ»."
+        )
+        await message.answer(
+            agreement_text,
+            reply_markup=get_rules_agreement_keyboard(),
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+        return
+
     kb, progress = await get_main_menu_keyboard(user_id)
 
     await message.answer(
@@ -21,6 +41,25 @@ async def cmd_start(message: Message):
         "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).",
         reply_markup=kb
     )
+
+@router.callback_query(F.data == "accept_rules")
+async def accept_rules_handler(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    await mark_rules_accepted(user_id)
+    await callback.answer("✅ Правила приняты!")
+
+    kb, progress = await get_main_menu_keyboard(user_id)
+    await callback.message.answer(
+        f"{progress}\n\n"
+        "Спасибо! Теперь вы можете участвовать в конкурсе.\n\n"
+        "Каждый участник получает 1 бесплатную заявку на участие.\n"
+        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).",
+        reply_markup=kb
+    )
+    try:
+        await callback.message.delete()
+    except:
+        pass
 
 
 @router.message(F.text == "🏆 Войти в Финал")
@@ -62,15 +101,16 @@ async def cmd_enter_final(message: Message):
 @router.message(F.text == "❓ Правила конкурса")
 async def cmd_rules(message: Message):
     rules_html = (
-        "<b>📌 Приложение к правилам для конкурса «iPhone 17 PRO 256 Гб»</b>\n\n"
+        "<b>📌 Правила конкурса «iPhone 17 PRO 256 Гб»</b>\n\n"
         "Интеллектуальный конкурс «iPhone 17 PRO 256 Гб»\n"
         "<b>Тематика квиза:</b> компания Apple, её устройства, операционные системы, технологии, история.\n"
         "<b>Приз:</b> iPhone 17 PRO 256 Гб (один экземпляр).\n"
         "<b>Старт Отборочного этапа:</b> 27 мая 2026 г. в 12:00 МСК.\n"
         "<b>Финал:</b> следующий календарный день после завершения Отборочного этапа в 19:00 по московскому времени.\n\n"
-        "Все остальные условия — в соответствии с Основными правилами интеллектуальных конкурсов, размещённых по ссылке:\n"
+        "Все условия конкурса — в соответствии с Основными правилами интеллектуальных конкурсов, размещённых по ссылке:\n"
         "https://cbda.ru/rules/base\n\n"
-        "<b>Организатор:</b> Частное лицо ИНН 470102947100. (самозанятый)."
+        "<b>Организатор:</b> Частное лицо ИНН 470102947100 (самозанятый).\n"
+        "Участие в конкурсе означает полное согласие с правилами и условиями обработки данных."
     )
     await message.answer(rules_html, parse_mode="HTML", disable_web_page_preview=True)
 
