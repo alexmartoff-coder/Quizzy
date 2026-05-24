@@ -11,6 +11,11 @@ payment_router = Router(name="payment_router")
 async def start_free_attempt(message: Message):
     user_id = message.from_user.id
 
+    from database.db import has_accepted_rules
+    if not await has_accepted_rules(user_id):
+        await message.answer("Пожалуйста, примите правила конкурса в главном меню (/start) перед участием.")
+        return
+
     if await is_collection_closed():
         await message.answer("🎉 Приём заявок завершён!")
         return
@@ -32,6 +37,11 @@ async def start_free_attempt(message: Message):
 
 @payment_router.message(F.text == "💰 Поддержать (99 ₽)")
 async def start_payment(message: Message):
+    from database.db import has_accepted_rules
+    if not await has_accepted_rules(message.from_user.id):
+        await message.answer("Пожалуйста, примите правила конкурса в главном меню (/start) перед участием.")
+        return
+
     if await is_collection_closed():
         await message.answer("🎉 Приём заявок завершён!")
         return

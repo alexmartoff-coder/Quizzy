@@ -4,6 +4,8 @@ from database.db_final import is_final_registration_open, has_user_registered_fo
 from config import OWNER_ID, TICKET_LIMIT, INITIAL_FAKE_TICKETS
 
 async def get_main_menu_keyboard(user_id: int = None):
+    from database.db import has_accepted_rules
+    rules_accepted = await has_accepted_rules(user_id) if user_id else False
     closed = await is_collection_closed()
     paid_count = await get_paid_tickets_count()
 
@@ -42,12 +44,15 @@ async def get_main_menu_keyboard(user_id: int = None):
     else:
         progress_text = "📢 Приём заявок завершён\n⏳ До Финала: 00:00:00"
 
-    if not closed:
+    if not closed and rules_accepted:
         used_free = await has_user_used_free_attempt(user_id)
         if not used_free:
             buttons.append([KeyboardButton(text="🆓 Бесплатная заявка на участие")])
 
         buttons.append([KeyboardButton(text="💰 Поддержать (99 ₽)")])
+        buttons.append([KeyboardButton(text="📊 Лидерборд")])
+    elif not closed and not rules_accepted:
+        # If rules not accepted, we don't show participation buttons
         buttons.append([KeyboardButton(text="📊 Лидерборд")])
     else:
         buttons.append([KeyboardButton(text="📊 Лидерборд финалистов")])
@@ -79,4 +84,9 @@ def get_db_download_keyboard():
 def get_start_quiz_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Начать квиз", callback_data="start_quiz")]
+    ])
+
+def get_rules_agreement_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Я ознакомлен и согласен", callback_data="accept_rules")]
     ])
