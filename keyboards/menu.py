@@ -22,7 +22,7 @@ async def get_main_menu_keyboard(user_id: int = None):
     buttons = []
 
     if not closed:
-        progress_text = f"📊 До Финала осталось: {display_count} из {TICKET_LIMIT} заявок\n{bar} {percent}%"
+        progress_text = f"📊 Собрано билетов: {display_count} из {TICKET_LIMIT}\n{bar} {percent}%"
     elif await is_final_active():
         from database.db_final import get_final_stats, get_final_times
         from datetime import datetime
@@ -45,21 +45,17 @@ async def get_main_menu_keyboard(user_id: int = None):
         progress_text = "📢 Приём заявок завершён\n⏳ До Финала: 00:00:00"
 
     if not closed and rules_accepted:
-        used_free = await has_user_used_free_attempt(user_id)
-        if not used_free:
-            buttons.append([KeyboardButton(text="🆓 Бесплатная заявка на участие")])
-
-        buttons.append([KeyboardButton(text="💰 Поддержать (99 ₽)")])
-        buttons.append([KeyboardButton(text="📊 Лидерборд")])
+        buttons.append([KeyboardButton(text="🎁 Играть в Квиз за iPhone 17")])
+        buttons.append([KeyboardButton(text="🏆 Лидерборд")])
     elif not closed and not rules_accepted:
         # If rules not accepted, we don't show participation buttons
-        buttons.append([KeyboardButton(text="📊 Лидерборд")])
+        buttons.append([KeyboardButton(text="🏆 Лидерборд")])
     else:
-        buttons.append([KeyboardButton(text="📊 Лидерборд финалистов")])
+        buttons.append([KeyboardButton(text="🏆 Лидерборд")])
 
     buttons.extend([
-        [KeyboardButton(text="👤 Мои заявки"), KeyboardButton(text="❓ Правила конкурса")],
-        [KeyboardButton(text="📞 Поддержка")]
+        [KeyboardButton(text="🎟️ Мои билеты"), KeyboardButton(text="📜 Правила розыгрыша")],
+        [KeyboardButton(text="❓ Поддержка")]
     ])
 
     if user_id == OWNER_ID:
