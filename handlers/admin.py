@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from config import OWNER_ID
 from database.db_admin import get_all_users_data
@@ -83,6 +83,11 @@ async def admin_calc_final(callback: CallbackQuery):
             f"Время: {winner[3]:.2f} сек."
         )
         await callback.message.answer(text, parse_mode="HTML")
+
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Опубликовать итоги в канал", callback_data="admin_publish_results")]
+        ])
+        await callback.message.answer("Опубликовать результаты?", reply_markup=kb)
     await callback.answer()
 
 @router.callback_query(F.data == "admin_test_final_reg")
@@ -97,6 +102,66 @@ async def admin_test_final_reg(callback: CallbackQuery):
         await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('closed_at', ?)", (fake_closed.isoformat(),))
         await db.commit()
     await callback.answer("Тестовый режим регистрации включен!", show_alert=True)
+
+@router.callback_query(F.data == "admin_publish_results")
+async def admin_publish_results(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+
+    from database.db_winner import get_preliminary_winner
+    winner = await get_preliminary_winner()
+    if not winner: return
+
+    from database.db_final import get_final_stats
+    stats = await get_final_stats()
+
+    from database.db import DB_PATH, CHANNEL_ID
+    import aiosqlite
+    import random
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT username, full_name FROM users WHERE user_id = ?", (winner[1],)) as c:
+            u = await c.fetchone()
+            username = u[0] if u[0] else u[1]
+
+        # Генерация 6-значного кода
+        win_code = "".join([str(random.randint(0,9)) for _ in range(6)])
+        await db.execute("INSERT OR REPLACE INTO winners (user_id, ticket_number, code) VALUES (?, ?, ?)",
+                         (winner[1], winner[0], win_code))
+        await db.commit()
+
+    text = (
+        f"🎉 <b>ФИНАЛ ЗАВЕРШЁН!</b>\n\n"
+        f"📊 <b>Статистика:</b>\n"
+        f"Всего финалистских заявок: {stats['total_finalist_tickets']}\n"
+        f"Зарегистрировалось (нажали кнопку): {stats['registered_tickets']}\n"
+        f"Не зарегистрировалось: {stats['total_finalist_tickets'] - stats['registered_tickets']}\n"
+        f"Успешно прошли финал: {stats['finished_tickets']}\n"
+        f"Не завершили прохождение: {stats['registered_tickets'] - stats['finished_tickets']}\n\n"
+        f"🏆 <b>ПОБЕДИТЕЛЬ:</b> @{u[0]} (заявка №{winner[0]:05d})\n"
+        f"Результат: {winner[2]}/8, время {winner[3]:.2f} сек.\n"
+        f"Приз: iPhone 17 PRO 256 Гб"
+    )
+
+    # В канал
+    try: await callback.bot.send_message(CHANNEL_ID, text, parse_mode="HTML")
+    except: pass
+
+    # Победителю
+    win_msg = (
+        f"🎊 <b>ПОЗДРАВЛЯЕМ! ВЫ ПОБЕДИЛИ В КОНКУРСЕ!</b>\n\n"
+        f"Ваш приз: <b>iPhone 17 PRO 256 Гб</b>\n"
+        f"Ваш секретный код: <code>{win_code}</code>\n\n"
+        f"<b>Инструкция:</b>\n"
+        f"1. Свяжитесь с организатором alexandr@cbda.ru или напишите в поддержку.\n"
+        f"2. Сообщите ваш секретный код.\n"
+        f"3. Подготовьте данные для акта приёма-передачи."
+    )
+    try: await callback.bot.send_message(winner[1], win_msg, parse_mode="HTML")
+    except: pass
+
+    # Админу
+    await callback.message.answer(f"✅ Результаты опубликованы!\nКод победителя: {win_code}")
+    await callback.answer()
 
 @router.message(F.text == "🏆 Победитель")
 async def admin_winner(message: Message):
