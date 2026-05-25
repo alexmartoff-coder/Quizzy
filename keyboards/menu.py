@@ -23,10 +23,10 @@ async def get_main_menu_keyboard(user_id: int = None):
     buttons = []
 
     if not closed:
-        progress_text = f"📊 До Финала осталось: {display_count} из {TICKET_LIMIT} заявок\n{bar} {percent}%"
+        progress_text = f"📊 Собрано заявок: {display_count} из {TICKET_LIMIT}\n{bar} {percent}%"
     elif await is_final_active():
         from database.db_final import get_final_stats, get_final_times
-        from datetime import datetime
+        from datetime import datetime, timedelta
         stats = await get_final_stats()
         times = await get_final_times()
         remaining = times["final_end"] - datetime.now()
