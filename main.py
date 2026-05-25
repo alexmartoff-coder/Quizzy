@@ -15,8 +15,13 @@ async def main():
     # Инициализация бота и диспетчера
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
-    global dp_instance
-    dp_instance = dp
+
+    from utils.state_helper import set_dp
+    set_dp(dp)
+
+    # Запуск планировщика задач
+    from handlers.final_quiz import start_schedulers
+    asyncio.create_task(start_schedulers(bot))
 
     # Регистрируем роутеры
     dp.include_router(payment.payment_router)
