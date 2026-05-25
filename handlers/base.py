@@ -62,6 +62,21 @@ async def accept_rules_handler(callback: CallbackQuery):
         pass
 
 
+@router.message(F.text == "🔥 Начать мини-квиз")
+async def cmd_start_mini_quiz(message: Message):
+    user_id = message.from_user.id
+    from database.db_winner import get_user_mini_quiz_tickets
+    tickets = await get_user_mini_quiz_tickets(user_id)
+    if not tickets:
+        await message.answer("У вас нет заявок для мини-квиза.")
+        return
+
+    await message.answer(f"🚀 Начинаем мини-квиз для {len(tickets)} заявок!")
+    from handlers.final_quiz import start_final_quiz_for_ticket
+    from utils.state_helper import get_state
+    state = await get_state(message.bot, user_id)
+    await start_final_quiz_for_ticket(message.bot, user_id, tickets[0], q_count=5, is_mini=True, state=state)
+
 @router.message(F.text == "🏆 Войти в Финал")
 async def cmd_enter_final(message: Message):
     user_id = message.from_user.id
@@ -96,7 +111,9 @@ async def cmd_enter_final(message: Message):
 
     # Запуск первого квиза
     from handlers.final_quiz import start_final_quiz_for_ticket
-    await start_final_quiz_for_ticket(message.bot, user_id, tickets[0])
+    from utils.state_helper import get_state
+    state = await get_state(message.bot, user_id)
+    await start_final_quiz_for_ticket(message.bot, user_id, tickets[0], state=state)
 
 @router.message(F.text == "❓ Правила конкурса")
 async def cmd_rules(message: Message):

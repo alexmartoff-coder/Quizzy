@@ -1,3 +1,4 @@
+import aiosqlite
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from database.db import is_collection_closed, has_user_used_free_attempt, get_total_tickets_count, get_paid_tickets_count
 from database.db_final import is_final_registration_open, has_user_registered_for_final, get_user_finalist_tickets, is_final_active
@@ -30,11 +31,19 @@ async def get_main_menu_keyboard(user_id: int = None):
         times = await get_final_times()
         remaining = times["final_end"] - datetime.now()
         rem_str = str(remaining).split(".")[0]
+
+        # Личный прогресс
+        finalist_tickets = await get_user_finalist_tickets(user_id)
+        async with aiosqlite.connect("bot_database.db") as db:
+            async with db.execute("SELECT COUNT(*) FROM final_results WHERE user_id = ? AND is_mini_quiz = 0", (user_id,)) as c:
+                done_count = (await c.fetchone())[0]
+
         progress_text = (
             f"🏆 <b>ФИНАЛ В РАЗГАРЕ!</b>\n"
-            f"Зарегистрировано заявок: {stats['registered_tickets']}\n"
-            f"Завершено: {stats['finished_tickets']}\n"
-            f"⏳ До окончания: {rem_str}"
+            f"📈 Зарегистрировано: {stats['registered_tickets']} заявок\n"
+            f"✅ Завершено: {stats['finished_tickets']}\n"
+            f"👤 Ваш прогресс: {done_count}/{len(finalist_tickets)}\n"
+            f"⏳ До 21:00 МСК: {rem_str}"
         )
 
         if await is_final_registration_open():
@@ -42,7 +51,44 @@ async def get_main_menu_keyboard(user_id: int = None):
             if tickets and not await has_user_registered_for_final(user_id):
                 buttons.append([KeyboardButton(text="🏆 Войти в Финал")])
     else:
-        progress_text = "📢 Приём заявок завершён\n⏳ До Финала: 00:00:00"
+        # Проверка на мини-квиз
+        from database.db_winner import get_user_mini_quiz_tickets, check_for_ties
+        ties = await check_for_ties()
+        from database.db_final import get_final_times
+        from datetime import datetime
+        times = await get_final_times()
+        now = datetime.now()
+
+        if ties and times:
+            mini_start = times["final_end"] + timedelta(minutes=30)
+            if now < mini_start:
+                remaining = mini_start - now
+                rem_str = str(remaining).split(".")[0]
+                progress_text = f"📢 Выявлено равенство результатов!\n⏳ Мини-квиз через: {rem_str}"
+            else:
+                progress_text = "🔥 <b>МИНИ-КВИЗ ИДЁТ!</b>"
+
+            mini_tickets = await get_user_mini_quiz_tickets(user_id)
+            if mini_tickets:
+                buttons.append([KeyboardButton(text="🔥 Начать мини-квиз")])
+        if not (ties and times):
+            from datetime import datetime
+            times = await get_final_times()
+
+        if times:
+            now = datetime.now()
+            if now < times["reg_start"]:
+                remaining = times["reg_start"] - now
+                rem_str = str(remaining).split(".")[0]
+                progress_text = f"📢 Приём заявок завершён\n⏳ Регистрация в Финал через: {rem_str}"
+            elif now < times["reg_end"]:
+                remaining = times["reg_end"] - now
+                rem_str = str(remaining).split(".")[0]
+                progress_text = f"🏆 <b>РЕГИСТРАЦИЯ В ФИНАЛ ОТКРЫТА!</b>\n⏳ До закрытия: {rem_str}"
+            else:
+                progress_text = "📢 Приём заявок завершён\n⏳ До Финала: 00:00:00"
+        else:
+            progress_text = "📢 Приём заявок завершён\n⏳ До Финала: 00:00:00"
 
     if not closed and rules_accepted:
         used_free = await has_user_used_free_attempt(user_id)

@@ -110,6 +110,16 @@ async def init_db():
             )
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS winners (
+                user_id INTEGER,
+                ticket_number INTEGER PRIMARY KEY,
+                code TEXT,
+                won_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
+
         try:
             await db.execute("ALTER TABLE users ADD COLUMN accepted_rules BOOLEAN DEFAULT 0")
         except:
@@ -287,10 +297,31 @@ async def get_paid_tickets_count():
             row = await cursor.fetchone()
             return row[0]
 
+async def get_all_finalists():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT DISTINCT user_id FROM tickets WHERE status = 'finalist'") as cursor:
+            rows = await cursor.fetchall()
+            return [r[0] for r in rows]
+
 async def check_and_trigger_closure(bot: Bot):
     paid_total = await get_paid_tickets_count()
     if paid_total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
+
+        # Рассылка финалистам
+        from database.db_final import get_final_times
+        times = await get_final_times()
+        if times:
+            reg_time_str = times["reg_start"].strftime("%H:%M")
+            push_text = f"🔥 Отборочный этап завершен: начало регистрации на Финал в {reg_time_str} МСК.\n\nДо финала: <b>--:--:--</b>"
+
+            finalists = await get_all_finalists()
+            for fid in finalists:
+                try:
+                    await bot.send_message(fid, push_text, parse_mode="HTML")
+                except:
+                    pass
+
         try:
             text = (
                 "🔥 СБОР ЗАЯВОК ЗАВЕРШЁН!\n\n"
