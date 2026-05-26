@@ -61,6 +61,7 @@ async def get_main_menu_keyboard(user_id: int = None):
         now = get_moscow_now().replace(tzinfo=None)
 
         if ties and times:
+            from datetime import timedelta
             mini_start = times["final_end"] + timedelta(minutes=30)
             if now < mini_start:
                 remaining = mini_start - now
@@ -96,6 +97,7 @@ async def get_main_menu_keyboard(user_id: int = None):
         if not used_free:
             buttons.append([KeyboardButton(text="🆓 Бесплатная заявка на участие")])
 
+        buttons.append([KeyboardButton(text="💰 Поддержать (99 ₽)")])
         buttons.append([KeyboardButton(text="📊 Лидерборд")])
     elif not closed and not rules_accepted:
         # If rules not accepted, we don't show participation buttons
