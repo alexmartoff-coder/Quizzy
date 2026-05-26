@@ -5,6 +5,7 @@ from database.db import DB_PATH, init_db
 
 async def seed_data():
     await init_db()
+    from config import INITIAL_FAKE_TICKETS
     async with aiosqlite.connect(DB_PATH) as db:
         # 1. Create a dummy user for the seed tickets
         dummy_uid = 999999
@@ -13,10 +14,13 @@ async def seed_data():
 
         # 2. Check current paid tickets count
         async with db.execute("SELECT COUNT(*) FROM tickets WHERE type = 'paid'") as cursor:
-            current_count = (await cursor.fetchone())[0]
+            current_real_count = (await cursor.fetchone())[0]
 
-        target_count = 3495
-        needed = target_count - current_count
+        # Мы хотим, чтобы общее отображаемое число было 3495
+        # display = real + initial_fake
+        # 3495 = real + 741 => real = 2754
+        target_real_count = 3495 - INITIAL_FAKE_TICKETS
+        needed = target_real_count - current_real_count
 
         if needed <= 0:
             print(f"Already have {current_count} paid tickets. No seeding needed.")
@@ -53,7 +57,7 @@ async def seed_data():
             print(f"Inserted {i + len(batch)}/{needed}...")
             await db.commit()
 
-    print("✅ Seeding complete. 3495 paid tickets reached.")
+    print(f"✅ Seeding complete. Display count should now be 3495 (Real: {target_real_count} + Fake: {INITIAL_FAKE_TICKETS}).")
 
 if __name__ == "__main__":
     asyncio.run(seed_data())

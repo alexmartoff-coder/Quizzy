@@ -304,8 +304,11 @@ async def get_all_finalists():
             return [r[0] for r in rows]
 
 async def check_and_trigger_closure(bot: Bot):
+    from config import INITIAL_FAKE_TICKETS
     paid_total = await get_paid_tickets_count()
-    if paid_total >= TICKET_LIMIT and not await is_collection_closed():
+    display_total = paid_total + INITIAL_FAKE_TICKETS
+
+    if display_total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
 
         # Рассылка финалистам

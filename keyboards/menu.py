@@ -10,8 +10,8 @@ async def get_main_menu_keyboard(user_id: int = None):
     closed = await is_collection_closed()
     paid_count = await get_paid_tickets_count()
 
-    # Визуальный счетчик
-    display_count = max(paid_count, INITIAL_FAKE_TICKETS)
+    # Визуальный счетчик: прибавляем фейковые билеты к реальным
+    display_count = paid_count + INITIAL_FAKE_TICKETS
     if display_count > TICKET_LIMIT:
         display_count = TICKET_LIMIT
 
@@ -26,7 +26,7 @@ async def get_main_menu_keyboard(user_id: int = None):
         progress_text = f"📊 До Финала осталось: {display_count} из {TICKET_LIMIT} заявок\n{bar} {percent}%"
     elif await is_final_active():
         from database.db_final import get_final_stats, get_final_times
-        from datetime import datetime
+        from datetime import datetime, timedelta
         stats = await get_final_stats()
         times = await get_final_times()
         remaining = times["final_end"] - datetime.now()
