@@ -16,6 +16,7 @@ import logging
 import html
 import aiosqlite
 from datetime import datetime
+from utils.time_utils import get_moscow_now
 
 router = Router()
 
@@ -92,6 +93,11 @@ async def final_timer(bot: Bot, state: FSMContext, user_id: int, q_idx: int, msg
             await send_final_question(bot, state, user_id, q_idx + 1)
     except asyncio.CancelledError:
         pass
+    finally:
+        if user_id in active_final_timers:
+            # We check if it's the same task to avoid removing a new timer
+            if active_final_timers[user_id] == asyncio.current_task():
+                active_final_timers.pop(user_id, None)
 
 @router.callback_query(F.data.startswith("fan_"))
 async def process_final_answer(callback: CallbackQuery, state: FSMContext):
@@ -199,12 +205,14 @@ async def start_schedulers(bot: Bot):
             from database.db_final import get_final_times
             times = await get_final_times()
             if times:
-                now = datetime.now()
+                now = get_moscow_now().replace(tzinfo=None)
                 # Пуш о начале регистрации в 19:00
                 if now.hour == 19 and now.minute == 0 and now.second < 10:
                     finalists = await get_all_finalists()
                     for fid in finalists:
-                        try: await bot.send_message(fid, "🔔 <b>РЕГИСТРАЦИЯ В ФИНАЛ ОТКРЫТА!</b>\n\nНажмите кнопку в меню до 19:30, чтобы подтвердить участие.", parse_mode="HTML")
+                        try:
+                            await bot.send_message(fid, "🔔 <b>РЕГИСТРАЦИЯ В ФИНАЛ ОТКРЫТА!</b>\n\nНажмите кнопку в меню до 19:30, чтобы подтвердить участие.", parse_mode="HTML")
+                            await asyncio.sleep(0.05) # Rate limiting
                         except: pass
                     await asyncio.sleep(60)
 
@@ -228,7 +236,9 @@ async def start_schedulers(bot: Bot):
                     finalists = await get_all_finalists()
                     for fid in finalists:
                         if not await has_user_registered_for_final(fid):
-                            try: await bot.send_message(fid, "⌛ <b>Регистрация завершена.</b>\n\nВы не успели войти в Финал, ваши заявки аннулированы.")
+                            try:
+                                await bot.send_message(fid, "⌛ <b>Регистрация завершена.</b>\n\nВы не успели войти в Финал, ваши заявки аннулированы.")
+                                await asyncio.sleep(0.05) # Rate limiting
                             except: pass
                     await asyncio.sleep(60)
 
@@ -244,6 +254,7 @@ async def start_schedulers(bot: Bot):
                                 from database.db_winner import get_user_mini_quiz_tickets
                                 if await get_user_mini_quiz_tickets(uid):
                                     await bot.send_message(uid, "🔔 <b>Начало МИНИ-КВИЗА!</b>\n\nИспользуйте кнопку в меню.", parse_mode="HTML")
+                                    await asyncio.sleep(0.05) # Rate limiting
                             except: pass
                     await asyncio.sleep(60)
 
