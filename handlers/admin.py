@@ -51,7 +51,8 @@ async def admin_final_management(message: Message):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📊 Рассчитать итоги", callback_data="admin_calc_final")],
-        [InlineKeyboardButton(text="🚀 Тест: Запустить регистрацию (на 5 мин)", callback_data="admin_test_final_reg")]
+        [InlineKeyboardButton(text="🚀 Тест: Запустить регистрацию (на 5 мин)", callback_data="admin_test_final_reg")],
+        [InlineKeyboardButton(text="🛠 Сид тестовых данных (3495)", callback_data="admin_seed_data")]
     ])
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
@@ -88,6 +89,14 @@ async def admin_calc_final(callback: CallbackQuery):
             [InlineKeyboardButton(text="📢 Опубликовать итоги в канал", callback_data="admin_publish_results")]
         ])
         await callback.message.answer("Опубликовать результаты?", reply_markup=kb)
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_seed_data")
+async def admin_seed_data_handler(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+    from tests.seed_test_data import seed_data
+    await seed_data()
+    await callback.message.answer("✅ База данных засеяна (3495 заявок)!")
     await callback.answer()
 
 @router.callback_query(F.data == "admin_test_final_reg")
