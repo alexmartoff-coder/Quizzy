@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from aiogram import Bot
 from config import TICKET_LIMIT, CHANNEL_ID, MAX_TICKET_NUMBER
+from utils.time_utils import get_moscow_now
 
 DB_PATH = "bot_database.db"
 
@@ -246,8 +247,8 @@ async def is_collection_closed():
 async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE settings SET value = '1' WHERE key = 'is_closed'")
-        # Сохраняем дату закрытия для расчета даты финала
-        now_str = datetime.now().isoformat()
+        # Сохраняем дату закрытия для расчета даты финала (МСК)
+        now_str = get_moscow_now().replace(tzinfo=None).isoformat()
         await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('closed_at', ?)", (now_str,))
         await db.commit()
 

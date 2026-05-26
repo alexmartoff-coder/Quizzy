@@ -27,8 +27,9 @@ class TestClosure(unittest.IsolatedAsyncioTestCase):
     @patch('database.db.is_collection_closed')
     @patch('database.db.close_collection')
     async def test_no_closure(self, mock_close, mock_is_closed, mock_count):
-        # Setup: less than TICKET_LIMIT tickets, not closed
-        mock_count.return_value = TICKET_LIMIT - 1
+        # Setup: less than TICKET_LIMIT tickets (including fake ones), not closed
+        from config import INITIAL_FAKE_TICKETS
+        mock_count.return_value = TICKET_LIMIT - INITIAL_FAKE_TICKETS - 1
         mock_is_closed.return_value = False
 
         bot = AsyncMock()

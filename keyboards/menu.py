@@ -3,6 +3,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from database.db import is_collection_closed, has_user_used_free_attempt, get_total_tickets_count, get_paid_tickets_count
 from database.db_final import is_final_registration_open, has_user_registered_for_final, get_user_finalist_tickets, is_final_active
 from config import OWNER_ID, TICKET_LIMIT, INITIAL_FAKE_TICKETS
+from utils.time_utils import get_moscow_now
 
 async def get_main_menu_keyboard(user_id: int = None):
     from database.db import has_accepted_rules
@@ -29,7 +30,7 @@ async def get_main_menu_keyboard(user_id: int = None):
         from datetime import datetime, timedelta
         stats = await get_final_stats()
         times = await get_final_times()
-        remaining = times["final_end"] - datetime.now()
+        remaining = times["final_end"] - get_moscow_now().replace(tzinfo=None)
         rem_str = str(remaining).split(".")[0]
 
         # Личный прогресс
@@ -57,7 +58,7 @@ async def get_main_menu_keyboard(user_id: int = None):
         from database.db_final import get_final_times
         from datetime import datetime
         times = await get_final_times()
-        now = datetime.now()
+        now = get_moscow_now().replace(tzinfo=None)
 
         if ties and times:
             mini_start = times["final_end"] + timedelta(minutes=30)
@@ -76,7 +77,7 @@ async def get_main_menu_keyboard(user_id: int = None):
             times = await get_final_times()
 
         if times:
-            now = datetime.now()
+            now = get_moscow_now().replace(tzinfo=None)
             if now < times["reg_start"]:
                 remaining = times["reg_start"] - now
                 rem_str = str(remaining).split(".")[0]
@@ -95,7 +96,6 @@ async def get_main_menu_keyboard(user_id: int = None):
         if not used_free:
             buttons.append([KeyboardButton(text="🆓 Бесплатная заявка на участие")])
 
-        buttons.append([KeyboardButton(text="💰 Поддержать (99 ₽)")])
         buttons.append([KeyboardButton(text="📊 Лидерборд")])
     elif not closed and not rules_accepted:
         # If rules not accepted, we don't show participation buttons
