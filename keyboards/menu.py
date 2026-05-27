@@ -9,6 +9,14 @@ async def get_main_menu_keyboard(user_id: int = None):
     from database.db import has_accepted_rules
     rules_accepted = await has_accepted_rules(user_id) if user_id else False
     closed = await is_collection_closed()
+
+    from database.db_final import get_final_times
+    times = await get_final_times()
+    is_test = times.get("is_test", False) if times else False
+
+    # В тестовом режиме считаем, что сбор "закрыт", чтобы видеть меню финала
+    effective_closed = closed or is_test
+
     paid_count = await get_paid_tickets_count()
 
     # Визуальный счетчик: прибавляем фейковые билеты к реальным
@@ -23,7 +31,7 @@ async def get_main_menu_keyboard(user_id: int = None):
 
     buttons = []
 
-    if not closed:
+    if not effective_closed:
         progress_text = f"📊 До Финала осталось: {display_count} из {TICKET_LIMIT} заявок\n{bar} {percent}%"
 
         used_free = await has_user_used_free_attempt(user_id)
@@ -45,10 +53,10 @@ async def get_main_menu_keyboard(user_id: int = None):
         buttons.append([KeyboardButton(text="📊 Лидерборд")])
 
     elif await is_final_active():
-        from database.db_final import get_final_stats, get_final_times
+        from database.db_final import get_final_stats
         from datetime import datetime, timedelta
         stats = await get_final_stats()
-        times = await get_final_times()
+        # times уже получен выше
         remaining = times["final_end"] - get_moscow_now().replace(tzinfo=None)
         rem_str = str(remaining).split(".")[0]
 
@@ -75,9 +83,7 @@ async def get_main_menu_keyboard(user_id: int = None):
         # Проверка на мини-квиз
         from database.db_winner import get_user_mini_quiz_tickets, check_for_ties
         ties = await check_for_ties()
-        from database.db_final import get_final_times
-        from datetime import datetime
-        times = await get_final_times()
+        # times уже получен выше
         now = get_moscow_now().replace(tzinfo=None)
 
         if ties and times:
@@ -93,10 +99,6 @@ async def get_main_menu_keyboard(user_id: int = None):
             mini_tickets = await get_user_mini_quiz_tickets(user_id)
             if mini_tickets:
                 buttons.append([KeyboardButton(text="🔥 Начать мини-квиз")])
-        if not (ties and times):
-            from datetime import datetime
-            times = await get_final_times()
-
         if times:
             now = get_moscow_now().replace(tzinfo=None)
             if now < times["reg_start"]:

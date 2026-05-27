@@ -51,7 +51,10 @@ async def admin_final_management(message: Message):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📊 Рассчитать итоги", callback_data="admin_calc_final")],
-        [InlineKeyboardButton(text="🚀 Тест: Запустить регистрацию (на 5 мин)", callback_data="admin_test_final_reg")],
+        [InlineKeyboardButton(text="🚀 Тест: Регистрация СЕЙЧАС", callback_data="admin_test_reg_now")],
+        [InlineKeyboardButton(text="🏁 Тест: Финал СЕЙЧАС", callback_data="admin_test_final_now")],
+        [InlineKeyboardButton(text="⏰ Тест: Завершить Финал", callback_data="admin_test_finish_now")],
+        [InlineKeyboardButton(text="❌ Сброс тестов", callback_data="admin_test_reset")],
         [InlineKeyboardButton(text="🛠 Сид тестовых данных (3495)", callback_data="admin_seed_data")]
     ])
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
@@ -99,21 +102,49 @@ async def admin_seed_data_handler(callback: CallbackQuery):
     await callback.message.answer("✅ База данных засеяна (3495 заявок)!")
     await callback.answer()
 
-@router.callback_query(F.data == "admin_test_final_reg")
-async def admin_test_final_reg(callback: CallbackQuery):
+@router.callback_query(F.data == "admin_test_reg_now")
+async def admin_test_reg_now(callback: CallbackQuery):
     if callback.from_user.id != OWNER_ID: return
-
     from utils.time_utils import get_moscow_now
-    # Регистрация начнется через 15 минут
-    test_start = get_moscow_now().replace(tzinfo=None) + timedelta(minutes=15)
-
-    import aiosqlite
-    from database.db import DB_PATH
+    now = get_moscow_now().replace(tzinfo=None)
+    test_start = now - timedelta(minutes=1) # Уже идет 1 минуту
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('test_reg_start', ?)", (test_start.isoformat(),))
         await db.commit()
+    await callback.message.answer("🚀 <b>Тест: Регистрация запущена!</b>\nПроверьте главное меню.", parse_mode="HTML")
+    await callback.answer()
 
-    await callback.message.answer(f"🚀 <b>Тестовый режим включен!</b>\n\nРегистрация начнется в {test_start.strftime('%H:%M:%S')} (через 15 минут).", parse_mode="HTML")
+@router.callback_query(F.data == "admin_test_final_now")
+async def admin_test_final_now(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+    from utils.time_utils import get_moscow_now
+    now = get_moscow_now().replace(tzinfo=None)
+    test_start = now - timedelta(minutes=31) # Регистрация закончилась 1 мин назад
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('test_reg_start', ?)", (test_start.isoformat(),))
+        await db.commit()
+    await callback.message.answer("🏁 <b>Тест: Финал запущен!</b>\nПроверьте главное меню.", parse_mode="HTML")
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_test_finish_now")
+async def admin_test_finish_now(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+    from utils.time_utils import get_moscow_now
+    now = get_moscow_now().replace(tzinfo=None)
+    test_start = now - timedelta(hours=2, minutes=1) # Финал закончился 1 мин назад
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('test_reg_start', ?)", (test_start.isoformat(),))
+        await db.commit()
+    await callback.message.answer("⏰ <b>Тест: Финал завершен!</b>\nТеперь можно рассчитать итоги.", parse_mode="HTML")
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_test_reset")
+async def admin_test_reset(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM settings WHERE key = 'test_reg_start'")
+        await db.commit()
+    await callback.message.answer("❌ Тестовые настройки сброшены.")
     await callback.answer()
 
 @router.callback_query(F.data == "admin_publish_results")
