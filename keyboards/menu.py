@@ -25,6 +25,25 @@ async def get_main_menu_keyboard(user_id: int = None):
 
     if not closed:
         progress_text = f"📊 До Финала осталось: {display_count} из {TICKET_LIMIT} заявок\n{bar} {percent}%"
+
+        used_free = await has_user_used_free_attempt(user_id)
+        if not used_free:
+            buttons.append([KeyboardButton(text="🆓 Бесплатная заявка на участие")])
+
+        buttons.append([KeyboardButton(text="💰 Поддержать (99 ₽)")])
+
+        # Проверяем наличие билетов, ожидающих квиза
+        if user_id:
+            async with aiosqlite.connect("bot_database.db") as db:
+                async with db.execute("SELECT COUNT(*) FROM tickets WHERE user_id = ? AND status = 'pending'", (user_id,)) as c:
+                    row = await c.fetchone()
+                    pending_count = row[0] if row else 0
+
+            if pending_count > 0:
+                buttons.append([KeyboardButton(text=f"🚀 Пройти квиз ({pending_count} в очереди)")])
+
+        buttons.append([KeyboardButton(text="📊 Лидерборд")])
+
     elif await is_final_active():
         from database.db_final import get_final_stats, get_final_times
         from datetime import datetime, timedelta
@@ -37,7 +56,8 @@ async def get_main_menu_keyboard(user_id: int = None):
         finalist_tickets = await get_user_finalist_tickets(user_id)
         async with aiosqlite.connect("bot_database.db") as db:
             async with db.execute("SELECT COUNT(*) FROM final_results WHERE user_id = ? AND is_mini_quiz = 0", (user_id,)) as c:
-                done_count = (await c.fetchone())[0]
+                row = await c.fetchone()
+                done_count = row[0] if row else 0
 
         progress_text = (
             f"🏆 <b>ФИНАЛ В РАЗГАРЕ!</b>\n"
@@ -92,17 +112,6 @@ async def get_main_menu_keyboard(user_id: int = None):
         else:
             progress_text = "📢 Приём заявок завершён\n⏳ До Финала: 00:00:00"
 
-    if not closed and rules_accepted:
-        used_free = await has_user_used_free_attempt(user_id)
-        if not used_free:
-            buttons.append([KeyboardButton(text="🆓 Бесплатная заявка на участие")])
-
-        buttons.append([KeyboardButton(text="💰 Поддержать (99 ₽)")])
-        buttons.append([KeyboardButton(text="📊 Лидерборд")])
-    elif not closed and not rules_accepted:
-        # If rules not accepted, we don't show participation buttons
-        buttons.append([KeyboardButton(text="📊 Лидерборд")])
-    else:
         buttons.append([KeyboardButton(text="📊 Лидерборд финалистов")])
 
     buttons.extend([

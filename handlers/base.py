@@ -24,12 +24,14 @@ async def cmd_start(message: Message):
             "включая обработку моих данных (Telegram ID, username, результаты) в целях проведения конкурса. "
             "Данные не являются персональными по 152-ФЗ»."
         )
+        kb, progress = await get_main_menu_keyboard(user_id)
         await message.answer(
             agreement_text,
             reply_markup=get_rules_agreement_keyboard(),
             parse_mode="HTML",
             disable_web_page_preview=True
         )
+        await message.answer(f"{progress}\n\nИспользуйте меню для навигации.", reply_markup=kb)
         return
 
     kb, progress = await get_main_menu_keyboard(user_id)
@@ -71,7 +73,12 @@ async def cmd_start_mini_quiz(message: Message):
         await message.answer("У вас нет заявок для мини-квиза.")
         return
 
-    await message.answer(f"🚀 Начинаем мини-квиз для {len(tickets)} заявок!")
+    await message.answer(
+        f"🚀 Начинаем мини-квиз для {len(tickets)} заявок!\n\n"
+        "⚠️ <b>Внимание!</b> Когда будете проходить квиз, выбирайте время и место, чтобы у вас был устойчивый интернет и входящие звонки не мешали прохождению квиза. "
+        "При закрытии окна или выходе из приложения отсутствие ответов будет оцениваться как проигрыш.",
+        parse_mode="HTML"
+    )
     from handlers.final_quiz import start_final_quiz_for_ticket
     from utils.state_helper import get_state
     state = await get_state(message.bot, user_id)
