@@ -7,6 +7,8 @@ from database.db import DB_PATH
 from keyboards.menu import get_admin_keyboard, get_db_download_keyboard, get_main_menu_keyboard
 from utils.google_sheets import export_to_google_sheets
 import os
+import aiosqlite
+from datetime import timedelta
 
 router = Router()
 
@@ -73,7 +75,6 @@ async def admin_calc_final(callback: CallbackQuery):
     else:
         # Победитель определен
         from database.db import DB_PATH
-        import aiosqlite
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute("SELECT username, full_name FROM users WHERE user_id = ?", (winner[1],)) as c:
                 u = await c.fetchone()

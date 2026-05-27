@@ -15,7 +15,7 @@ import time
 import logging
 import html
 import aiosqlite
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.time_utils import get_moscow_now
 
 router = Router()
