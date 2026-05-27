@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.fsm.context import FSMContext
 from handlers.quiz_states import QuizStates
 from database.db import get_quiz_session, update_quiz_score, update_quiz_question, finish_quiz_session, check_and_trigger_closure, add_user, update_ticket_result
-from keyboards.menu import get_main_menu_keyboard
+from keyboards.menu import get_main_menu_keyboard, get_start_quiz_keyboard
 from utils.generator import generate_questions
 import asyncio
 import time
@@ -95,6 +95,26 @@ async def quiz_timer_logic(bot: Bot, state: FSMContext, user_id: int, q_idx: int
     finally:
         if active_quiz_timers.get(user_id) == asyncio.current_task():
             active_quiz_timers.pop(user_id, None)
+
+@router.message(F.text.contains("🚀 Пройти квиз"))
+async def cmd_resume_pending_quiz(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT ticket_number FROM tickets WHERE user_id = ? AND status = 'pending' LIMIT 1", (user_id,)) as c:
+            row = await c.fetchone()
+            if row:
+                ticket_num = row[0]
+                from database.db import set_quiz_session
+                await set_quiz_session(user_id, ticket_num, score=0, current_question=0, is_active=True)
+                await message.answer(
+                    f"🎫 Начинаем квиз для заявки №{ticket_num:05d}.\n\n"
+                    "⚠️ <b>Внимание!</b> Выбирайте время и место, чтобы интернет был устойчивым и звонки не отвлекали. "
+                    "Отсутствие ответа или закрытие приложения будет оцениваться как проигрыш в вопросе.",
+                    reply_markup=get_start_quiz_keyboard(),
+                    parse_mode="HTML"
+                )
+            else:
+                await message.answer("У вас нет заявок, ожидающих квиза.")
 
 @router.callback_query(F.data == "start_quiz")
 async def start_quiz_handler(callback: CallbackQuery, state: FSMContext):

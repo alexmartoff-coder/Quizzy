@@ -6,6 +6,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
 
 CHANNEL_ID = "@quizzy_best"
+YOOKASSA_PROVIDER_TOKEN = os.getenv("YOOKASSA_PROVIDER_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID", "228592391"))
 
 TICKET_LIMIT = 3500
