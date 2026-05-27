@@ -200,24 +200,29 @@ async def start_next_mini_handler(callback: CallbackQuery, state: FSMContext):
     await start_final_quiz_for_ticket(callback.bot, callback.from_user.id, next_t, q_count=5, is_mini=True, state=state)
 
 async def start_schedulers(bot: Bot):
+    sent_pushes = set() # To avoid duplicate pushes in the same loop
     while True:
         try:
             from database.db_final import get_final_times
             times = await get_final_times()
             if times:
                 now = get_moscow_now().replace(tzinfo=None)
-                # Пуш о начале регистрации в 19:00
-                if now.hour == 19 and now.minute == 0 and now.second < 10:
+                day_key = now.strftime("%Y-%m-%d")
+
+                # Пуш о начале регистрации (reg_start)
+                push_key = f"reg_start_{day_key}_{times['reg_start'].strftime('%H:%M')}"
+                if now >= times["reg_start"] and push_key not in sent_pushes:
                     finalists = await get_all_finalists()
                     for fid in finalists:
                         try:
-                            await bot.send_message(fid, "🔔 <b>РЕГИСТРАЦИЯ В ФИНАЛ ОТКРЫТА!</b>\n\nНажмите кнопку в меню до 19:30, чтобы подтвердить участие.", parse_mode="HTML")
+                            await bot.send_message(fid, f"🔔 <b>РЕГИСТРАЦИЯ В ФИНАЛ ОТКРЫТА!</b>\n\nНажмите кнопку в меню до {times['reg_end'].strftime('%H:%M')}, чтобы подтвердить участие.", parse_mode="HTML")
                             await asyncio.sleep(0.05) # Rate limiting
                         except: pass
-                    await asyncio.sleep(60)
+                    sent_pushes.add(push_key)
 
-                # Пуш в 21:00 о завершении
-                if now.hour == 21 and now.minute == 0 and now.second < 10:
+                # Пуш о завершении финала (final_end)
+                push_key_end = f"final_end_{day_key}_{times['final_end'].strftime('%H:%M')}"
+                if now >= times["final_end"] and push_key_end not in sent_pushes:
                     await bot.send_message(chat_id=CHANNEL_ID, text="🏁 Финал конкурса завершён! Подводим итоги...")
 
                     # Проверка на ничью
@@ -226,10 +231,11 @@ async def start_schedulers(bot: Bot):
                     if ties:
                         await setup_mini_quiz(bot, ties)
 
-                    await asyncio.sleep(60)
+                    sent_pushes.add(push_key_end)
 
-                # Пуш в 19:30 об аннулировании
-                if now.hour == 19 and now.minute == 30 and now.second < 10:
+                # Пуш об аннулировании (reg_end)
+                push_key_cancel = f"reg_end_{day_key}_{times['reg_end'].strftime('%H:%M')}"
+                if now >= times["reg_end"] and push_key_cancel not in sent_pushes:
                     # Находим всех, кто не зарегистрировался
                     from database.db import get_all_finalists
                     from database.db_final import has_user_registered_for_final
@@ -240,10 +246,12 @@ async def start_schedulers(bot: Bot):
                                 await bot.send_message(fid, "⌛ <b>Регистрация завершена.</b>\n\nВы не успели войти в Финал, ваши заявки аннулированы.")
                                 await asyncio.sleep(0.05) # Rate limiting
                             except: pass
-                    await asyncio.sleep(60)
+                    sent_pushes.add(push_key_cancel)
 
-                # Пуш в 21:30 о начале мини-квиза
-                if now.hour == 21 and now.minute == 30 and now.second < 10:
+                # Пуш о начале мини-квиза (через 30 мин после final_end)
+                mini_start = times["final_end"] + timedelta(minutes=30)
+                push_key_mini = f"mini_start_{day_key}_{mini_start.strftime('%H:%M')}"
+                if now >= mini_start and push_key_mini not in sent_pushes:
                     from database.db_winner import check_for_ties
                     ties = await check_for_ties()
                     if ties:
@@ -256,7 +264,7 @@ async def start_schedulers(bot: Bot):
                                     await bot.send_message(uid, "🔔 <b>Начало МИНИ-КВИЗА!</b>\n\nИспользуйте кнопку в меню.", parse_mode="HTML")
                                     await asyncio.sleep(0.05) # Rate limiting
                             except: pass
-                    await asyncio.sleep(60)
+                    sent_pushes.add(push_key_mini)
 
         except Exception as e:
             logging.error(f"Scheduler error: {e}")

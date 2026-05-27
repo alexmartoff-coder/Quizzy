@@ -116,7 +116,7 @@ async def get_main_menu_keyboard(user_id: int = None):
 
     buttons.extend([
         [KeyboardButton(text="👤 Мои заявки"), KeyboardButton(text="❓ Правила конкурса")],
-        [KeyboardButton(text="📞 Поддержка")]
+        [KeyboardButton(text="📞 Поддержка"), KeyboardButton(text="🔄 Обновить данные")]
     ])
 
     if user_id == OWNER_ID:

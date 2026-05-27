@@ -118,6 +118,10 @@ async def cmd_enter_final(message: Message):
         f"Квиз для первой заявки №{tickets[0]:05d} начнется через мгновение...",
         parse_mode="HTML"
     )
+    from handlers.final_quiz import start_final_quiz_for_ticket
+    from utils.state_helper import get_state
+    state = await get_state(message.bot, user_id)
+    await start_final_quiz_for_ticket(message.bot, user_id, tickets[0], q_count=5, is_mini=True, state=state)
 
     # Запуск первого квиза
     from handlers.final_quiz import start_final_quiz_for_ticket
@@ -156,7 +160,7 @@ async def cmd_my_tickets(message: Message):
                 status_text = "⏳ Ожидает квиза"
                 score_text = ""
             elif status == "finalist":
-                status_text = "— прошла в Финал!"
+                status_text = "— прошла в Финал! ✅"
                 score_text = f"\nРезультат: {score}/10"
             else:
                 status_text = "— Не прошла в финал"
@@ -183,3 +187,9 @@ async def cmd_leaderboard(message: Message):
 @router.message(F.text == "📞 Поддержка")
 async def cmd_support(message: Message):
     await message.answer("По всем вопросам обращайтесь в поддержку бота по электронной почте alexandr@cbda.ru")
+
+@router.message(F.text == "🔄 Обновить данные")
+async def cmd_refresh(message: Message):
+    user_id = message.from_user.id
+    kb, progress = await get_main_menu_keyboard(user_id)
+    await message.answer(f"🔄 Данные обновлены!\n\n{progress}", reply_markup=kb, parse_mode="HTML")

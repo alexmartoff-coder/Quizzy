@@ -5,12 +5,25 @@ from utils.time_utils import get_moscow_now
 
 async def get_final_times():
     async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT value FROM settings WHERE key = 'closed_at'") as cursor:
-            row = await cursor.fetchone()
-            if not row:
+        async with db.execute("SELECT key, value FROM settings WHERE key IN ('closed_at', 'test_reg_start')") as cursor:
+            rows = await cursor.fetchall()
+            settings = {r[0]: r[1] for r in rows}
+
+            if 'test_reg_start' in settings:
+                reg_start = datetime.fromisoformat(settings['test_reg_start'])
+                reg_end = reg_start + timedelta(minutes=30)
+                final_end = reg_start + timedelta(hours=2)
+                return {
+                    "reg_start": reg_start,
+                    "reg_end": reg_end,
+                    "final_end": final_end,
+                    "is_test": True
+                }
+
+            if 'closed_at' not in settings:
                 return None
 
-            closed_at = datetime.fromisoformat(row[0])
+            closed_at = datetime.fromisoformat(settings['closed_at'])
             # Финал на следующий день
             final_date = closed_at.date() + timedelta(days=1)
 
@@ -21,7 +34,8 @@ async def get_final_times():
             return {
                 "reg_start": reg_start,
                 "reg_end": reg_end,
-                "final_end": final_end
+                "final_end": final_end,
+                "is_test": False
             }
 
 async def is_final_registration_open():

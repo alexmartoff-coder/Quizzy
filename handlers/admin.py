@@ -102,15 +102,19 @@ async def admin_seed_data_handler(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_test_final_reg")
 async def admin_test_final_reg(callback: CallbackQuery):
     if callback.from_user.id != OWNER_ID: return
-    # Устанавливаем closed_at на "вчера 18:58", чтобы сейчас была регистрация (19:00 - 19:30)
-    from datetime import datetime, timedelta
-    fake_closed = datetime.now() - timedelta(days=1, minutes=2)
+
+    from utils.time_utils import get_moscow_now
+    # Регистрация начнется через 15 минут
+    test_start = get_moscow_now().replace(tzinfo=None) + timedelta(minutes=15)
+
     import aiosqlite
     from database.db import DB_PATH
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('closed_at', ?)", (fake_closed.isoformat(),))
+        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('test_reg_start', ?)", (test_start.isoformat(),))
         await db.commit()
-    await callback.answer("Тестовый режим регистрации включен!", show_alert=True)
+
+    await callback.message.answer(f"🚀 <b>Тестовый режим включен!</b>\n\nРегистрация начнется в {test_start.strftime('%H:%M:%S')} (через 15 минут).", parse_mode="HTML")
+    await callback.answer()
 
 @router.callback_query(F.data == "admin_publish_results")
 async def admin_publish_results(callback: CallbackQuery):
