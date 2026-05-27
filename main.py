@@ -20,8 +20,8 @@ async def main():
     set_dp(dp)
 
     # Запуск планировщика задач
-    from handlers.final_quiz import start_schedulers
-    asyncio.create_task(start_schedulers(bot))
+    # from handlers.final_quiz import start_schedulers
+    # asyncio.create_task(start_schedulers(bot))
 
     # Регистрируем роутеры
     dp.include_router(payment.payment_router)

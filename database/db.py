@@ -2,7 +2,7 @@ import aiosqlite
 import os
 from datetime import datetime
 from aiogram import Bot
-from config import TICKET_LIMIT, CHANNEL_ID, MAX_TICKET_NUMBER
+from config import TICKET_LIMIT, CHANNEL_ID, MAX_TICKET_NUMBER, CONTEST_END_DATE
 from utils.time_utils import get_moscow_now
 
 DB_PATH = "bot_database.db"
@@ -145,7 +145,7 @@ async def init_db():
 
 async def issue_ticket(user_id, ticket_type):
     async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY RANDOM() LIMIT 1") as cursor:
+        async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY ticket_number ASC LIMIT 1") as cursor:
             row = await cursor.fetchone()
             if row:
                 ticket_num = row[0]
@@ -228,21 +228,25 @@ async def get_leaderboard(limit=20):
             SELECT
                 u.username,
                 u.full_name,
-                COUNT(t.id) as finalist_count
+                COUNT(t.id) as ticket_count
             FROM users u
             JOIN tickets t ON u.user_id = t.user_id
-            WHERE t.status = 'finalist'
             GROUP BY u.user_id
-            ORDER BY finalist_count DESC
+            ORDER BY ticket_count DESC
             LIMIT ?
         """, (limit,)) as cursor:
             return await cursor.fetchall()
 
 async def is_collection_closed():
+    if get_moscow_now().replace(tzinfo=None) >= CONTEST_END_DATE:
+        return True
+    return await is_collection_closed_only_db()
+
+async def is_collection_closed_only_db():
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
             row = await cursor.fetchone()
-            return row[0] == '1'
+            return row[0] == '1' if row else False
 
 async def close_collection():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -305,34 +309,28 @@ async def get_all_finalists():
             return [r[0] for r in rows]
 
 async def check_and_trigger_closure(bot: Bot):
-    from config import INITIAL_FAKE_TICKETS
-    paid_total = await get_paid_tickets_count()
-    display_total = paid_total + INITIAL_FAKE_TICKETS
+    total_count = await get_total_tickets_count()
+    is_closed_by_date = get_moscow_now().replace(tzinfo=None) >= CONTEST_END_DATE
+    is_closed_by_limit = total_count >= TICKET_LIMIT
 
-    if display_total >= TICKET_LIMIT and not await is_collection_closed():
+    if (is_closed_by_limit or is_closed_by_date) and not await is_collection_closed_only_db():
         await close_collection()
 
-        # Рассылка финалистам
-        from database.db_final import get_final_times
-        times = await get_final_times()
-        if times:
-            reg_time_str = times["reg_start"].strftime("%H:%M")
-            push_text = f"🔥 Отборочный этап завершен: начало регистрации на Финал в {reg_time_str} МСК.\n\nДо финала: <b>--:--:--</b>"
-
-            finalists = await get_all_finalists()
-            for fid in finalists:
-                try:
-                    await bot.send_message(fid, push_text, parse_mode="HTML")
-                except:
-                    pass
-
         try:
-            text = (
-                "🔥 СБОР ЗАЯВОК ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 заявок.\n"
-                "Спасибо всем, кто принял участие!\n\n"
-                "Отборочный этап завершен. Скоро начнется Финал."
-            )
+            if is_closed_by_limit:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    f"Мы достигли лимита в {TICKET_LIMIT} билетов раньше срока.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
+            else:
+                text = (
+                    "🔥 СБОР БИЛЕТОВ ЗАВЕРШЁН!\n\n"
+                    "Срок приёма заявок истёк.\n"
+                    "Спасибо всем, кто принял участие!\n\n"
+                    "Дата и время прямого розыгрыша будет объявлена в ближайшие часы."
+                )
             await bot.send_message(chat_id=CHANNEL_ID, text=text)
         except Exception as e:
             import logging
