@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import aiosqlite
 from database.db import DB_PATH
+from utils.time_utils import get_moscow_now
 
 async def get_final_times():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -28,7 +29,7 @@ async def is_final_registration_open():
     if not times:
         return False
 
-    now = datetime.now()
+    now = get_moscow_now().replace(tzinfo=None)
     return times["reg_start"] <= now <= times["reg_end"]
 
 async def is_final_active():
@@ -36,7 +37,7 @@ async def is_final_active():
     if not times:
         return False
 
-    now = datetime.now()
+    now = get_moscow_now().replace(tzinfo=None)
     return times["reg_start"] <= now <= times["final_end"]
 
 async def register_for_final(user_id: int):
