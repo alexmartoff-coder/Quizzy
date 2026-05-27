@@ -201,6 +201,8 @@ async def start_next_mini_handler(callback: CallbackQuery, state: FSMContext):
 
 async def start_schedulers(bot: Bot):
     sent_pushes = set() # To avoid duplicate pushes in the same loop
+    last_test_start = None
+
     while True:
         try:
             from database.db_final import get_final_times
@@ -209,8 +211,14 @@ async def start_schedulers(bot: Bot):
                 now = get_moscow_now().replace(tzinfo=None)
                 day_key = now.strftime("%Y-%m-%d")
 
+                # Сброс пушей при смене тестового времени
+                current_test_start = times.get("reg_start").isoformat() if times.get("is_test") else "prod"
+                if last_test_start != current_test_start:
+                    sent_pushes.clear()
+                    last_test_start = current_test_start
+
                 # Пуш о начале регистрации (reg_start)
-                push_key = f"reg_start_{day_key}_{times['reg_start'].strftime('%H:%M')}"
+                push_key = f"reg_start_{day_key}_{times['reg_start'].strftime('%H:%M:%S')}"
                 if now >= times["reg_start"] and push_key not in sent_pushes:
                     finalists = await get_all_finalists()
                     for fid in finalists:
@@ -221,7 +229,7 @@ async def start_schedulers(bot: Bot):
                     sent_pushes.add(push_key)
 
                 # Пуш о завершении финала (final_end)
-                push_key_end = f"final_end_{day_key}_{times['final_end'].strftime('%H:%M')}"
+                push_key_end = f"final_end_{day_key}_{times['final_end'].strftime('%H:%M:%S')}"
                 if now >= times["final_end"] and push_key_end not in sent_pushes:
                     await bot.send_message(chat_id=CHANNEL_ID, text="🏁 Финал конкурса завершён! Подводим итоги...")
 
@@ -234,7 +242,7 @@ async def start_schedulers(bot: Bot):
                     sent_pushes.add(push_key_end)
 
                 # Пуш об аннулировании (reg_end)
-                push_key_cancel = f"reg_end_{day_key}_{times['reg_end'].strftime('%H:%M')}"
+                push_key_cancel = f"reg_end_{day_key}_{times['reg_end'].strftime('%H:%M:%S')}"
                 if now >= times["reg_end"] and push_key_cancel not in sent_pushes:
                     # Находим всех, кто не зарегистрировался
                     from database.db import get_all_finalists
@@ -250,7 +258,7 @@ async def start_schedulers(bot: Bot):
 
                 # Пуш о начале мини-квиза (через 30 мин после final_end)
                 mini_start = times["final_end"] + timedelta(minutes=30)
-                push_key_mini = f"mini_start_{day_key}_{mini_start.strftime('%H:%M')}"
+                push_key_mini = f"mini_start_{day_key}_{mini_start.strftime('%H:%M:%S')}"
                 if now >= mini_start and push_key_mini not in sent_pushes:
                     from database.db_winner import check_for_ties
                     ties = await check_for_ties()
