@@ -71,7 +71,7 @@ async def get_main_menu_keyboard(user_id: int = None):
             f"🏆 <b>ФИНАЛ В РАЗГАРЕ!</b>\n"
             f"📈 Зарегистрировано: {stats['registered_tickets']} заявок\n"
             f"✅ Завершено: {stats['finished_tickets']}\n"
-            f"👤 Ваш прогресс: {done_count}/{len(finalist_tickets)}\n"
+            f"🎟 <b>Ваши квизы:</b> {done_count}/{len(finalist_tickets)}\n"
             f"⏳ До 21:00 МСК: {rem_str}"
         )
 
