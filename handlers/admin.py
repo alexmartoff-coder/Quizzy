@@ -181,20 +181,17 @@ async def admin_publish_results(callback: CallbackQuery):
     seconds = int(winner[3] % 60)
     time_str = f"{minutes:02d}:{seconds:02d}"
 
-    text = (
-        f"🎉 <b>ФИНАЛ ЗАВЕРШЁН!</b>\n\n"
-        f"Всего финалистских заявок: {stats['total_finalist_tickets']}\n"
-        f"Зарегистрировалось (нажали кнопку): {stats['registered_tickets']}\n"
-        f"Не зарегистрировалось (не нажали до 19:30): {stats['total_finalist_tickets'] - stats['registered_tickets']}\n"
-        f"Успешно прошли финал (полностью или частично): {stats['finished_tickets']}\n"
-        f"Не завершили прохождение (не уложились в 21:00): {stats['registered_tickets'] - stats['finished_tickets']}\n\n"
-        f"🏆 <b>ПОБЕДИТЕЛЬ:</b> @{u[0]} (заявка №{winner[0]:05d})\n"
-        f"Результат: {winner[2]}/8, время {time_str}\n"
-        f"Приз: iPhone 17 PRO 256 Гб"
+    public_text = (
+        "🏆 <b>Победитель конкурса определён!</b>\n\n"
+        f"@{u[0]} (заявка №{winner[0]:05d})\n"
+        f"Результат: {winner[2]}/8 за {time_str}\n\n"
+        "Поздравляем победителя!\n\n"
+        "Приз (iPhone 17 PRO 256 Гб) будет вручён только после подтверждения секретного кода. "
+        "Код отправлен победителю в личные сообщения."
     )
 
     # В канал
-    try: await callback.bot.send_message(CHANNEL_ID, text, parse_mode="HTML")
+    try: await callback.bot.send_message(CHANNEL_ID, public_text, parse_mode="HTML")
     except: pass
 
     # Рассылка всем пользователям
@@ -203,25 +200,35 @@ async def admin_publish_results(callback: CallbackQuery):
             all_users = await cursor.fetchall()
             for (uid,) in all_users:
                 try:
-                    await callback.bot.send_message(uid, text, parse_mode="HTML")
+                    await callback.bot.send_message(uid, public_text, parse_mode="HTML")
                     await asyncio.sleep(0.05) # Rate limiting
                 except: pass
 
     # Победителю
     win_msg = (
-        f"🎊 <b>ПОЗДРАВЛЯЕМ! ВЫ ПОБЕДИЛИ В КОНКУРСЕ!</b>\n\n"
-        f"Ваш приз: <b>iPhone 17 PRO 256 Гб</b>\n"
-        f"Ваш секретный код: <code>{win_code}</code>\n\n"
-        f"<b>Инструкция:</b>\n"
-        f"1. Свяжитесь с организатором alexandr@cbda.ru или напишите в поддержку.\n"
-        f"2. Сообщите ваш секретный код.\n"
-        f"3. Подготовьте данные для акта приёма-передачи."
+        "🎊 <b>ПОЗДРАВЛЯЕМ! Вы стали победителем конкурса!</b>\n\n"
+        "Ваш приз: <b>iPhone 17 PRO 256 Гб</b>\n\n"
+        f"🔑 Ваш секретный код: <code>{win_code}</code>\n\n"
+        "⚠️ <b>Важная информация:</b>\n"
+        "• Никому не сообщайте этот код. Даже если кто-то пишет вам от имени организатора.\n"
+        "• Для получения приза напишите организатору в личные сообщения @mozgo_boy_admin или на почту alexandr@cbda.ru\n"
+        "• Обязательно укажите свой секретный код: " + win_code + "\n\n"
+        "Код предназначен только для вас и будет проверен организатором лично."
     )
     try: await callback.bot.send_message(winner[1], win_msg, parse_mode="HTML")
     except: pass
 
     # Админу
-    await callback.message.answer(f"✅ Результаты опубликованы!\nКод победителя: {win_code}")
+    from utils.time_utils import get_moscow_now
+    gen_date = get_moscow_now().strftime("%d.%m.%Y %H:%M")
+    admin_msg = (
+        f"Победитель: @{u[0]}\n"
+        f"Заявка №{winner[0]:05d}\n"
+        f"Результат: {winner[2]}/8 | Время: {time_str}\n"
+        f"Секретный код: {win_code}\n"
+        f"Дата генерации: {gen_date}"
+    )
+    await callback.message.answer(f"✅ <b>Результаты опубликованы!</b>\n\n{admin_msg}", parse_mode="HTML")
     await callback.answer()
 
 @router.message(F.text == "🏆 Победитель")

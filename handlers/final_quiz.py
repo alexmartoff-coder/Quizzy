@@ -62,8 +62,16 @@ async def send_final_question(bot: Bot, state: FSMContext, user_id: int, q_idx: 
     await state.update_data(current_final_q_idx=q_idx)
 
     question = questions[q_idx]
-    prefix = "⚡️ <b>МИНИ-КВИЗ</b>" if data.get("is_mini_quiz") else "🏁 <b>ФИНАЛЬНЫЙ КВИЗ</b>"
-    text = f"{prefix} (Заявка №{data['current_ticket_num']:05d})\n\nВопрос {q_idx + 1}/{data['q_count']}\n\n{html.escape(question['question'])}\n\n⏱ У тебя 12 секунд!"
+
+    prefix = "⚡️" if data.get("is_mini_quiz") else "🏁"
+
+    if q_idx == 0:
+        title = "⚡️ <b>МИНИ-КВИЗ</b>" if data.get("is_mini_quiz") else "🏁 <b>ФИНАЛЬНЫЙ КВИЗ</b>"
+        header = f"{title} (Заявка №{data['current_ticket_num']:05d})\n\n"
+    else:
+        header = ""
+
+    text = f"{header}{prefix} Вопрос {q_idx + 1}/{data['q_count']}\n\n{html.escape(question['question'])}\n\n⏱ У тебя 12 секунд!"
 
     keyboard = []
     for i, opt in enumerate(question['options']):

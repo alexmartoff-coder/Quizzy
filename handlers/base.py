@@ -37,11 +37,12 @@ async def cmd_start(message: Message):
     kb, progress = await get_main_menu_keyboard(user_id)
 
     await message.answer(
-        f"{progress}\n\n"
-        "Добро пожаловать в интеллектуальный конкурс «iPhone 17 PRO 256 Гб»!\n\n"
+        f"<b>Добро пожаловать в интеллектуальный конкурс «iPhone 17 PRO 256 Гб»!</b>\n\n"
         "Каждый участник получает 1 бесплатную заявку на участие.\n"
-        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).",
-        reply_markup=kb
+        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).\n\n"
+        f"{progress}",
+        reply_markup=kb,
+        parse_mode="HTML"
     )
 
 @router.callback_query(F.data == "accept_rules")
@@ -52,11 +53,12 @@ async def accept_rules_handler(callback: CallbackQuery):
 
     kb, progress = await get_main_menu_keyboard(user_id)
     await callback.message.answer(
-        f"{progress}\n\n"
-        "Спасибо! Теперь вы можете участвовать в конкурсе.\n\n"
+        "<b>Спасибо! Теперь вы можете участвовать в конкурсе.</b>\n\n"
         "Каждый участник получает 1 бесплатную заявку на участие.\n"
-        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).",
-        reply_markup=kb
+        "Вы также можете поддержать конкурс и получить дополнительную попытку (99 ₽).\n\n"
+        f"{progress}",
+        reply_markup=kb,
+        parse_mode="HTML"
     )
     try:
         await callback.message.delete()
@@ -110,20 +112,20 @@ async def cmd_enter_final(message: Message):
         await db.execute("INSERT OR REPLACE INTO final_sessions (user_id, current_ticket_index, is_active) VALUES (?, 0, 1)", (user_id,))
         await db.commit()
 
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Начать финальный квиз", callback_data=f"start_next_final_{tickets[0]}")]
+    ])
+
     await message.answer(
         f"✅ Вы успешно вошли в Финал!\n"
         f"Всего ваших заявок: {len(tickets)}\n\n"
         "⚠️ <b>Внимание!</b> Когда будете проходить квиз выбирайте время и место чтобы у вас был устойчивый интернет и входящие звонки не мешали прохождению квиза. "
         "При закрытии окна или выхода из приложения отсутствие ответов будет оцениваться как проигрыш.\n\n"
-        f"Квиз для первой заявки №{tickets[0]:05d} начнется через мгновение...",
+        f"Нажмите на кнопку ниже, чтобы начать прохождение для заявки №{tickets[0]:05d}.",
+        reply_markup=kb,
         parse_mode="HTML"
     )
-
-    # Запуск первого квиза
-    from handlers.final_quiz import start_final_quiz_for_ticket
-    from utils.state_helper import get_state
-    state = await get_state(message.bot, user_id)
-    await start_final_quiz_for_ticket(message.bot, user_id, tickets[0], state=state)
 
 @router.message(F.text == "❓ Правила конкурса")
 async def cmd_rules(message: Message):
