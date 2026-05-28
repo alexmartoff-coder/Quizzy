@@ -174,16 +174,19 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
     if next_idx < len(all_tickets):
         next_t = all_tickets[next_idx]
         kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🚀 Начать квиз", callback_data=f"start_next_final_{next_t}")]])
-        await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: {score}/8\n\nСледующая ваша заявка №{next_t:05d}.\nПерерыв 60 секунд или начните сейчас.", reply_markup=kb)
+        await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: <b>{score}/8</b>\n\nСледующая ваша заявка №{next_t:05d}.\nПерерыв 60 секунд или начните сейчас.", reply_markup=kb, parse_mode="HTML")
 
-        # Таймер на 60 сек
-        await asyncio.sleep(60)
-        # Проверяем, не нажал ли уже кнопку
-        session_data = await state.get_data()
-        if session_data.get("current_ticket_num") == t_num: # Еще не переключился
-            await start_final_quiz_for_ticket(bot, user_id, next_t, state=state)
+        # Таймер на 60 сек (в фоне, чтобы не блокировать хендлер)
+        async def wait_and_start():
+            await asyncio.sleep(60)
+            try:
+                current_data = await state.get_data()
+                if current_data.get("current_ticket_num") == t_num:
+                    await start_final_quiz_for_ticket(bot, user_id, next_t, state=state)
+            except: pass
+        asyncio.create_task(wait_and_start())
     else:
-        await bot.send_message(user_id, f"🎉 Поздравляем! Вы прошли Финал для всех своих заявок ({len(all_tickets)} шт.).\nРезультаты будут подведены после 21:00.")
+        await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: <b>{score}/8</b>\n\n🎉 Поздравляем! Вы прошли Финал для всех своих заявок ({len(all_tickets)} шт.).\nРезультаты будут подведены после 21:00.", parse_mode="HTML")
         async with aiosqlite.connect("bot_database.db") as db:
             await db.execute("UPDATE final_sessions SET is_active = 0 WHERE user_id = ?", (user_id,))
             await db.commit()

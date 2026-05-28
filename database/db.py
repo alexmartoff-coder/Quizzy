@@ -312,21 +312,25 @@ async def check_and_trigger_closure(bot: Bot):
     if display_total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
 
-        # Рассылка финалистам
+        # Рассылка финалистам (в фоне)
         from database.db_final import get_final_times
         times = await get_final_times()
         if times:
-            from keyboards.menu import get_main_menu_keyboard
-            reg_time_str = times["reg_start"].strftime("%H:%M")
-            push_text = f"🔥 Отборочный этап завершен: начало регистрации на Финал в {reg_time_str} МСК.\n\nДо финала: <b>--:--:--</b>"
+            async def broadcast_closure():
+                from keyboards.menu import get_main_menu_keyboard
+                reg_time_str = times["reg_start"].strftime("%H:%M")
+                push_text = f"🔥 Отборочный этап завершен: начало регистрации на Финал в {reg_time_str} МСК.\n\nДо финала: <b>--:--:--</b>"
 
-            finalists = await get_all_finalists()
-            for fid in finalists:
-                try:
-                    kb, _ = await get_main_menu_keyboard(fid)
-                    await bot.send_message(fid, push_text, parse_mode="HTML", reply_markup=kb)
-                except:
-                    pass
+                finalists = await get_all_finalists()
+                for fid in finalists:
+                    try:
+                        kb, _ = await get_main_menu_keyboard(fid)
+                        await bot.send_message(fid, push_text, parse_mode="HTML", reply_markup=kb)
+                        await asyncio.sleep(0.05) # Rate limiting
+                    except:
+                        pass
+            import asyncio
+            asyncio.create_task(broadcast_closure())
 
         try:
             text = (
