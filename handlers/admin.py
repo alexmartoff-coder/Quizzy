@@ -8,6 +8,8 @@ from keyboards.menu import get_admin_keyboard, get_db_download_keyboard, get_mai
 from utils.google_sheets import export_to_google_sheets
 import os
 import aiosqlite
+import asyncio
+import random
 from datetime import timedelta
 
 router = Router()
@@ -174,22 +176,36 @@ async def admin_publish_results(callback: CallbackQuery):
                          (winner[1], winner[0], win_code))
         await db.commit()
 
+    # Форматирование времени победителя (ММ:СС)
+    minutes = int(winner[3] // 60)
+    seconds = int(winner[3] % 60)
+    time_str = f"{minutes:02d}:{seconds:02d}"
+
     text = (
         f"🎉 <b>ФИНАЛ ЗАВЕРШЁН!</b>\n\n"
-        f"📊 <b>Статистика:</b>\n"
         f"Всего финалистских заявок: {stats['total_finalist_tickets']}\n"
         f"Зарегистрировалось (нажали кнопку): {stats['registered_tickets']}\n"
-        f"Не зарегистрировалось: {stats['total_finalist_tickets'] - stats['registered_tickets']}\n"
-        f"Успешно прошли финал: {stats['finished_tickets']}\n"
-        f"Не завершили прохождение: {stats['registered_tickets'] - stats['finished_tickets']}\n\n"
+        f"Не зарегистрировалось (не нажали до 19:30): {stats['total_finalist_tickets'] - stats['registered_tickets']}\n"
+        f"Успешно прошли финал (полностью или частично): {stats['finished_tickets']}\n"
+        f"Не завершили прохождение (не уложились в 21:00): {stats['registered_tickets'] - stats['finished_tickets']}\n\n"
         f"🏆 <b>ПОБЕДИТЕЛЬ:</b> @{u[0]} (заявка №{winner[0]:05d})\n"
-        f"Результат: {winner[2]}/8, время {winner[3]:.2f} сек.\n"
+        f"Результат: {winner[2]}/8, время {time_str}\n"
         f"Приз: iPhone 17 PRO 256 Гб"
     )
 
     # В канал
     try: await callback.bot.send_message(CHANNEL_ID, text, parse_mode="HTML")
     except: pass
+
+    # Рассылка всем пользователям
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT user_id FROM users") as cursor:
+            all_users = await cursor.fetchall()
+            for (uid,) in all_users:
+                try:
+                    await callback.bot.send_message(uid, text, parse_mode="HTML")
+                    await asyncio.sleep(0.05) # Rate limiting
+                except: pass
 
     # Победителю
     win_msg = (

@@ -147,9 +147,9 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
         all_mini = await get_user_mini_quiz_tickets(user_id)
         if all_mini:
             next_t = all_mini[0]
-            msg = await bot.send_message(user_id, f"✅ Мини-квиз для №{t_num:05d} завершён.\n\nСледующая ваша спорная заявка №{next_t:05d}.\nПерерыв 60 секунд.")
-            kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Начать сейчас", callback_data=f"start_next_mini_{next_t}")]])
-            await bot.edit_message_reply_markup(user_id, msg.message_id, reply_markup=kb)
+            kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🚀 Начать квиз", callback_data=f"start_next_mini_{next_t}")]])
+            await bot.send_message(user_id, f"✅ Мини-квиз для №{t_num:05d} завершён.\n\nСледующая ваша спорная заявка №{next_t:05d}.\nПерерыв 60 секунд или начните сейчас.", reply_markup=kb)
+
             await asyncio.sleep(60)
             session_data = await state.get_data()
             if session_data.get("current_ticket_num") == t_num:
@@ -165,10 +165,8 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
 
     if next_idx < len(all_tickets):
         next_t = all_tickets[next_idx]
-        msg = await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: {score}/8\n\nСледующая ваша заявка №{next_t:05d}.\nУ вас есть 60 секунд на перерыв.")
-
-        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Начать сейчас", callback_data=f"start_next_final_{next_t}")]])
-        await bot.edit_message_reply_markup(user_id, msg.message_id, reply_markup=kb)
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🚀 Начать квиз", callback_data=f"start_next_final_{next_t}")]])
+        await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: {score}/8\n\nСледующая ваша заявка №{next_t:05d}.\nПерерыв 60 секунд или начните сейчас.", reply_markup=kb)
 
         # Таймер на 60 сек
         await asyncio.sleep(60)
@@ -223,7 +221,8 @@ async def start_schedulers(bot: Bot):
                     finalists = await get_all_finalists()
                     for fid in finalists:
                         try:
-                            await bot.send_message(fid, f"🔔 <b>РЕГИСТРАЦИЯ В ФИНАЛ ОТКРЫТА!</b>\n\nНажмите кнопку в меню до {times['reg_end'].strftime('%H:%M')}, чтобы подтвердить участие.", parse_mode="HTML")
+                            kb, _ = await get_main_menu_keyboard(fid)
+                            await bot.send_message(fid, f"🔔 <b>РЕГИСТРАЦИЯ В ФИНАЛ ОТКРЫТА!</b>\n\nНажмите кнопку в меню до {times['reg_end'].strftime('%H:%M')}, чтобы подтвердить участие.", parse_mode="HTML", reply_markup=kb)
                             await asyncio.sleep(0.05) # Rate limiting
                         except: pass
                     sent_pushes.add(push_key)
@@ -269,7 +268,8 @@ async def start_schedulers(bot: Bot):
                                 # Проверяем, не начал ли он уже мини-квиз
                                 from database.db_winner import get_user_mini_quiz_tickets
                                 if await get_user_mini_quiz_tickets(uid):
-                                    await bot.send_message(uid, "🔔 <b>Начало МИНИ-КВИЗА!</b>\n\nИспользуйте кнопку в меню.", parse_mode="HTML")
+                                    kb, _ = await get_main_menu_keyboard(uid)
+                                    await bot.send_message(uid, "🔔 <b>Начало МИНИ-КВИЗА!</b>\n\nИспользуйте кнопку в меню.", parse_mode="HTML", reply_markup=kb)
                                     await asyncio.sleep(0.05) # Rate limiting
                             except: pass
                     sent_pushes.add(push_key_mini)

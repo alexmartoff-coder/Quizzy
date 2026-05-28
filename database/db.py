@@ -316,13 +316,15 @@ async def check_and_trigger_closure(bot: Bot):
         from database.db_final import get_final_times
         times = await get_final_times()
         if times:
+            from keyboards.menu import get_main_menu_keyboard
             reg_time_str = times["reg_start"].strftime("%H:%M")
             push_text = f"🔥 Отборочный этап завершен: начало регистрации на Финал в {reg_time_str} МСК.\n\nДо финала: <b>--:--:--</b>"
 
             finalists = await get_all_finalists()
             for fid in finalists:
                 try:
-                    await bot.send_message(fid, push_text, parse_mode="HTML")
+                    kb, _ = await get_main_menu_keyboard(fid)
+                    await bot.send_message(fid, push_text, parse_mode="HTML", reply_markup=kb)
                 except:
                     pass
 
