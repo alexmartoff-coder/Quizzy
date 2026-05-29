@@ -6,7 +6,7 @@ from config import OWNER_ID, TICKET_LIMIT, INITIAL_FAKE_TICKETS
 from utils.time_utils import get_moscow_now
 
 async def get_main_menu_keyboard(user_id: int = None):
-    from database.db import has_accepted_rules
+    from database.db import has_accepted_rules, get_user_ticket_counts
     rules_accepted = await has_accepted_rules(user_id) if user_id else False
     closed = await is_collection_closed()
 
@@ -17,10 +17,21 @@ async def get_main_menu_keyboard(user_id: int = None):
     # В тестовом режиме считаем, что сбор "закрыт", чтобы видеть меню финала
     effective_closed = closed or is_test
 
-    paid_count = await get_paid_tickets_count()
+    real_paid_total = await get_paid_tickets_count()
 
-    # Визуальный счетчик: прибавляем фейковые билеты к реальным
-    display_count = paid_count + INITIAL_FAKE_TICKETS
+    # Логика прогресс-бара:
+    # 1. Базовое смещение 741.
+    # 2. Любой юзер всегда видит (Минимум 741) + (Свои заявки).
+    # 3. Как только общих реальных платных заявок становится больше 741,
+    #    счетчик переключается на реальные данные (Real Paid).
+
+    user_total, user_free = await get_user_ticket_counts(user_id) if user_id else (0, 0)
+
+    # Счетчик для отображения:
+    # 1. Базовое смещение 741.
+    # 2. Пользователь видит (741 + свой вклад) или (реальный общий итог), смотря что больше.
+    display_count = max(INITIAL_FAKE_TICKETS + user_total, real_paid_total)
+
     if display_count > TICKET_LIMIT:
         display_count = TICKET_LIMIT
 

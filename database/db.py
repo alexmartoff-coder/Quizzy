@@ -298,6 +298,14 @@ async def get_paid_tickets_count():
             row = await cursor.fetchone()
             return row[0]
 
+async def get_user_ticket_counts(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT type FROM tickets WHERE user_id = ?", (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            total = len(rows)
+            free = sum(1 for (t_type,) in rows if t_type == 'base')
+            return total, free
+
 async def get_all_finalists():
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT DISTINCT user_id FROM tickets WHERE status = 'finalist'") as cursor:
@@ -305,11 +313,10 @@ async def get_all_finalists():
             return [r[0] for r in rows]
 
 async def check_and_trigger_closure(bot: Bot):
-    from config import INITIAL_FAKE_TICKETS
     paid_total = await get_paid_tickets_count()
-    display_total = paid_total + INITIAL_FAKE_TICKETS
 
-    if display_total >= TICKET_LIMIT and not await is_collection_closed():
+    # Цель - собрать 3500 реальных платных заявок
+    if paid_total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
 
         # Рассылка финалистам (в фоне)
