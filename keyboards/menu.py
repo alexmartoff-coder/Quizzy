@@ -26,11 +26,14 @@ async def get_main_menu_keyboard(user_id: int = None):
     #    счетчик переключается на реальные данные (Real Paid).
 
     user_total, user_free = await get_user_ticket_counts(user_id) if user_id else (0, 0)
+    user_paid = user_total - user_free
 
-    # Счетчик для отображения:
+    # Логика прогресс-бара:
     # 1. Базовое смещение 741.
-    # 2. Пользователь видит (741 + свой вклад) или (реальный общий итог), смотря что больше.
-    display_count = max(INITIAL_FAKE_TICKETS + user_total, real_paid_total)
+    # 2. Пользователь видит (741 + свой вклад) или (реальный общий итог + свои бесплатные), смотря что больше.
+    # Это гарантирует, что любая заявка (платная или бесплатная) увеличивает счетчик на 1,
+    # и при этом соблюдается "пол" в 741 и переход на реальные данные.
+    display_count = max(INITIAL_FAKE_TICKETS + user_paid, real_paid_total) + user_free
 
     if display_count > TICKET_LIMIT:
         display_count = TICKET_LIMIT

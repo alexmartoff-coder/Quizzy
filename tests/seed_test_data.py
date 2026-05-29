@@ -16,10 +16,10 @@ async def seed_data():
         async with db.execute("SELECT COUNT(*) FROM tickets WHERE type = 'paid'") as cursor:
             current_real_count = (await cursor.fetchone())[0]
 
-        # Мы хотим, чтобы общее отображаемое число было 3495
-        # display = real + initial_fake
-        # 3495 = real + 741 => real = 2754
-        target_real_count = 3495 - INITIAL_FAKE_TICKETS
+        # Мы хотим, чтобы общее отображаемое число было 3495.
+        # Согласно новой логике max(741 + user_total, real_paid_total),
+        # чтобы увидеть 3495, нам нужно 3495 реальных оплаченных заявок.
+        target_real_count = 3495
         needed = target_real_count - current_real_count
 
         if needed <= 0:
@@ -57,7 +57,7 @@ async def seed_data():
             print(f"Inserted {i + len(batch)}/{needed}...")
             await db.commit()
 
-    print(f"✅ Seeding complete. Display count should now be 3495 (Real: {target_real_count} + Fake: {INITIAL_FAKE_TICKETS}).")
+    print(f"✅ Seeding complete. Display count should now be 3495 (Real paid: {target_real_count}).")
 
 if __name__ == "__main__":
     asyncio.run(seed_data())
