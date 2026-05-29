@@ -144,7 +144,7 @@ async def init_db():
 
 async def issue_ticket(user_id, ticket_type):
     async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY RANDOM() LIMIT 1") as cursor:
+        async with db.execute("SELECT ticket_number FROM available_tickets ORDER BY ticket_number ASC LIMIT 1") as cursor:
             row = await cursor.fetchone()
             if row:
                 ticket_num = row[0]
@@ -227,17 +227,25 @@ async def get_leaderboard(limit=20):
             SELECT
                 u.username,
                 u.full_name,
-                COUNT(t.id) as finalist_count
+                COUNT(t.id) as ticket_count
             FROM users u
             JOIN tickets t ON u.user_id = t.user_id
-            WHERE t.status = 'finalist'
+            WHERE t.status != 'pending'
             GROUP BY u.user_id
-            ORDER BY finalist_count DESC
+            ORDER BY ticket_count DESC
             LIMIT ?
         """, (limit,)) as cursor:
             return await cursor.fetchall()
 
 async def is_collection_closed():
+    from utils.time_utils import get_moscow_now
+    from config import CONTEST_DEADLINE
+    now = get_moscow_now().replace(tzinfo=None)
+    deadline = datetime.strptime(CONTEST_DEADLINE, "%Y-%m-%d")
+
+    if now >= deadline:
+        return True
+
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT value FROM settings WHERE key = 'is_closed'") as cursor:
             row = await cursor.fetchone()
@@ -304,30 +312,19 @@ async def get_all_finalists():
             return [r[0] for r in rows]
 
 async def check_and_trigger_closure(bot: Bot):
-    paid_total = await get_paid_tickets_count()
-    if paid_total >= TICKET_LIMIT and not await is_collection_closed():
+    from config import INITIAL_FAKE_TICKETS
+    paid_real = await get_paid_tickets_count()
+    total_display = paid_real + INITIAL_FAKE_TICKETS
+
+    if total_display >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
-
-        # Рассылка финалистам
-        from database.db_final import get_final_times
-        times = await get_final_times()
-        if times:
-            reg_time_str = times["reg_start"].strftime("%H:%M")
-            push_text = f"🔥 Отборочный этап завершен: начало регистрации на Финал в {reg_time_str} МСК.\n\nДо финала: <b>--:--:--</b>"
-
-            finalists = await get_all_finalists()
-            for fid in finalists:
-                try:
-                    await bot.send_message(fid, push_text, parse_mode="HTML")
-                except:
-                    pass
 
         try:
             text = (
                 "🔥 СБОР ЗАЯВОК ЗАВЕРШЁН!\n\n"
-                "Мы достигли лимита в 3500 заявок.\n"
+                f"Мы достигли лимита в {TICKET_LIMIT} заявок.\n"
                 "Спасибо всем, кто принял участие!\n\n"
-                "Отборочный этап завершен. Скоро начнется Финал."
+                "Розыгрыш призов состоится совсем скоро. Следите за новостями!"
             )
             await bot.send_message(chat_id=CHANNEL_ID, text=text)
         except Exception as e:
