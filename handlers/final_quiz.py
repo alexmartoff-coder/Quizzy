@@ -151,7 +151,7 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
         await db.commit()
 
     if is_mini:
-        from database.db_winner import get_user_mini_quiz_tickets
+        from database.db_winner import get_user_mini_quiz_tickets, get_mini_quiz_winner
         all_mini = await get_user_mini_quiz_tickets(user_id)
         if all_mini:
             next_t = all_mini[0]
@@ -162,6 +162,25 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
             session_data = await state.get_data()
             if session_data.get("current_ticket_num") == t_num:
                 await start_final_quiz_for_ticket(bot, user_id, next_t, q_count=5, is_mini=True, state=state)
+            return
+        else:
+            # Больше нет билетов в мини-квизе у этого юзера.
+            # Если это был последний активный мини-квиз во всем боте, публикуем итоги.
+            async with aiosqlite.connect("bot_database.db") as db:
+                # Находим количество незавершенных мини-квизов во всей системе
+                query = """
+                    SELECT COUNT(*) FROM tickets
+                    WHERE ticket_number IN (
+                        SELECT REPLACE(key, 'mini_quiz_pending_', '') FROM settings WHERE key LIKE 'mini_quiz_pending_%' AND value = '1'
+                    )
+                    AND ticket_number NOT IN (SELECT ticket_number FROM final_results WHERE is_mini_quiz = 1)
+                """
+                async with db.execute(query) as cursor:
+                    remaining_global = (await cursor.fetchone())[0]
+
+            if remaining_global == 0:
+                from handlers.admin import publish_final_results
+                await publish_final_results(bot)
             return
 
     from database.db_final import get_user_finalist_tickets
@@ -186,11 +205,29 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
             except: pass
         asyncio.create_task(wait_and_start())
     else:
-        await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: <b>{score}/8</b>\n\n🎉 Поздравляем! Вы прошли Финал для всех своих заявок ({len(all_tickets)} шт.).\nРезультаты будут подведены после 21:00.", parse_mode="HTML")
+        await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: <b>{score}/8</b>\n\n🎉 Поздравляем! Вы прошли Финал для всех своих заявок ({len(all_tickets)} шт.).\nРезультаты будут подведены в ближайшее время.", parse_mode="HTML")
         async with aiosqlite.connect("bot_database.db") as db:
             await db.execute("UPDATE final_sessions SET is_active = 0 WHERE user_id = ?", (user_id,))
             await db.commit()
         await state.clear()
+
+        # Проверяем, не был ли это ПОСЛЕДНИЙ активный билет во всем финале
+        async with aiosqlite.connect("bot_database.db") as db:
+            # Считаем количество активных сессий
+            async with db.execute("SELECT COUNT(*) FROM final_sessions WHERE is_active = 1") as cursor:
+                active_sessions = (await cursor.fetchone())[0]
+
+        if active_sessions == 0:
+            # Все закончили. Проверяем, наступило ли время 19:30 (регистрация закрыта)
+            from database.db_final import get_final_times
+            times = await get_final_times()
+            if times:
+                from utils.time_utils import get_moscow_now
+                now = get_moscow_now().replace(tzinfo=None)
+                if now >= times["reg_end"]:
+                    # Регистрация закрыта и все прошли - публикуем не дожидаясь 21:00
+                    from handlers.admin import publish_final_results
+                    await publish_final_results(bot)
 
 @router.callback_query(F.data.startswith("start_next_final_"))
 async def start_next_final_handler(callback: CallbackQuery, state: FSMContext):
@@ -248,8 +285,19 @@ async def start_schedulers(bot: Bot):
                     ties = await check_for_ties()
                     if ties:
                         await setup_mini_quiz(bot, ties)
+                    else:
+                        # Если ничьи нет, публикуем итоги автоматически в 21:00
+                        from handlers.admin import publish_final_results
+                        await publish_final_results(bot)
 
                     sent_pushes.add(push_key_end)
+
+                # Пуш о принудительной публикации (если кто-то не дошел)
+                push_key_force = f"publish_force_{day_key}_{times['final_end'].strftime('%H:%M:%S')}"
+                if now >= times["final_end"] and push_key_force not in sent_pushes:
+                    from handlers.admin import publish_final_results
+                    await publish_final_results(bot)
+                    sent_pushes.add(push_key_force)
 
                 # Пуш об аннулировании (reg_end)
                 push_key_cancel = f"reg_end_{day_key}_{times['reg_end'].strftime('%H:%M:%S')}"

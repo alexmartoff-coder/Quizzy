@@ -170,6 +170,32 @@ async def cmd_my_tickets(message: Message):
 @router.message(F.text == "📊 Лидерборд")
 @router.message(F.text == "📊 Лидерборд финалистов")
 async def cmd_leaderboard(message: Message):
+    # Проверка, завершен ли розыгрыш
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT ticket_number, user_id, score, total_time FROM final_results WHERE is_mini_quiz = (SELECT MAX(is_mini_quiz) FROM final_results) ORDER BY score DESC, total_time ASC LIMIT 1") as cursor:
+            winner = await cursor.fetchone()
+        async with db.execute("SELECT value FROM settings WHERE key = 'results_published'") as cursor:
+            published = await cursor.fetchone()
+
+    if winner and published:
+        async with aiosqlite.connect("bot_database.db") as db:
+            async with db.execute("SELECT username, full_name FROM users WHERE user_id = ?", (winner[1],)) as c:
+                u = await c.fetchone()
+                username = "@" + u[0] if u[0] else u[1]
+
+        minutes = int(winner[3] // 60)
+        seconds = int(winner[3] % 60)
+        time_str = f"{minutes:02d}:{seconds:02d}"
+
+        text = (
+            "🏆 <b>Победитель конкурса определён!</b>\n\n"
+            f"Победитель: {username} (заявка №{winner[0]:05d})\n"
+            f"Результат: {winner[2]}/8, время {time_str}\n"
+            "Приз: iPhone 17 PRO 256 Гб"
+        )
+        await message.answer(text, parse_mode="HTML")
+        return
+
     leaders = await get_leaderboard(limit=20)
     if not leaders:
         await message.answer("Лидерборд финалистов пока пуст.")
@@ -188,6 +214,35 @@ async def cmd_support(message: Message):
 
 @router.message(F.text == "🔄 Обновить данные")
 async def cmd_refresh(message: Message):
+    # Проверка, завершен ли розыгрыш
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT ticket_number, user_id, score, total_time FROM final_results WHERE is_mini_quiz = (SELECT MAX(is_mini_quiz) FROM final_results) ORDER BY score DESC, total_time ASC LIMIT 1") as cursor:
+            winner = await cursor.fetchone()
+        async with db.execute("SELECT value FROM settings WHERE key = 'results_published'") as cursor:
+            published = await cursor.fetchone()
+
+    if winner and published:
+        async with aiosqlite.connect("bot_database.db") as db:
+            async with db.execute("SELECT username, full_name FROM users WHERE user_id = ?", (winner[1],)) as c:
+                u = await c.fetchone()
+                username = "@" + u[0] if u[0] else u[1]
+
+        minutes = int(winner[3] // 60)
+        seconds = int(winner[3] % 60)
+        time_str = f"{minutes:02d}:{seconds:02d}"
+
+        text = (
+            "🏆 <b>Победитель конкурса определён!</b>\n\n"
+            f"Победитель: {username} (заявка №{winner[0]:05d})\n"
+            f"Результат: {winner[2]}/8, время {time_str}\n"
+            "Приз: iPhone 17 PRO 256 Гб\n\n"
+            "Поздравляем победителя!\n"
+            "<b>ЖДЁМ ВАС НА НОВЫХ КОНКУРСАХ!</b>\n"
+            "Следите за стартом в нашем канале @quizzy_best"
+        )
+        await message.answer(text, parse_mode="HTML")
+        return
+
     user_id = message.from_user.id
     kb, progress = await get_main_menu_keyboard(user_id)
     await message.answer(f"🔄 Данные обновлены!\n\n{progress}", reply_markup=kb, parse_mode="HTML")
