@@ -141,7 +141,8 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
     resp_time = data.get('final_responses_time', 0.0)
     is_mini = data.get("is_mini_quiz", False)
 
-    async with aiosqlite.connect("bot_database.db") as db:
+    from database.db import DB_PATH
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
             INSERT OR REPLACE INTO final_results (ticket_number, user_id, score, total_time, finished_at, is_mini_quiz)
             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
@@ -166,7 +167,8 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
         else:
             # Больше нет билетов в мини-квизе у этого юзера.
             # Если это был последний активный мини-квиз во всем боте, публикуем итоги.
-            async with aiosqlite.connect("bot_database.db") as db:
+            from database.db import DB_PATH
+            async with aiosqlite.connect(DB_PATH) as db:
                 # Находим количество незавершенных мини-квизов во всей системе
                 query = """
                     SELECT COUNT(*) FROM tickets
@@ -186,7 +188,8 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
     from database.db_final import get_user_finalist_tickets
     all_tickets = await get_user_finalist_tickets(user_id)
 
-    async with aiosqlite.connect("bot_database.db") as db:
+    from database.db import DB_PATH
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT current_ticket_index FROM final_sessions WHERE user_id = ?", (user_id,)) as c:
             next_idx = (await c.fetchone())[0]
 
@@ -206,13 +209,14 @@ async def finish_ticket_final(bot: Bot, state: FSMContext, user_id: int):
         asyncio.create_task(wait_and_start())
     else:
         await bot.send_message(user_id, f"✅ Квиз для заявки №{t_num:05d} завершён.\nРезультат: <b>{score}/8</b>\n\n🎉 Поздравляем! Вы прошли Финал для всех своих заявок ({len(all_tickets)} шт.).\nРезультаты будут подведены в ближайшее время.", parse_mode="HTML")
-        async with aiosqlite.connect("bot_database.db") as db:
+        from database.db import DB_PATH
+        async with aiosqlite.connect(DB_PATH) as db:
             await db.execute("UPDATE final_sessions SET is_active = 0 WHERE user_id = ?", (user_id,))
             await db.commit()
         await state.clear()
 
         # Проверяем, не был ли это ПОСЛЕДНИЙ активный билет во всем финале
-        async with aiosqlite.connect("bot_database.db") as db:
+        async with aiosqlite.connect(DB_PATH) as db:
             # Считаем количество активных сессий
             async with db.execute("SELECT COUNT(*) FROM final_sessions WHERE is_active = 1") as cursor:
                 active_sessions = (await cursor.fetchone())[0]
