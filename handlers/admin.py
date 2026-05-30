@@ -150,85 +150,106 @@ async def admin_test_reset(callback: CallbackQuery):
     await callback.message.answer("❌ Тестовые настройки сброшены.")
     await callback.answer()
 
-@router.callback_query(F.data == "admin_publish_results")
-async def admin_publish_results(callback: CallbackQuery):
-    if callback.from_user.id != OWNER_ID: return
-
-    from database.db_winner import get_preliminary_winner
-    winner = await get_preliminary_winner()
-    if not winner: return
-
+async def publish_final_results(bot: Bot):
+    from database.db_winner import get_preliminary_winner, get_mini_quiz_winner
     from database.db_final import get_final_stats
-    stats = await get_final_stats()
-
     from database.db import DB_PATH, CHANNEL_ID
     import aiosqlite
     import random
 
+    # Сначала проверяем мини-квиз
+    winner = await get_mini_quiz_winner()
+    if not winner:
+        winner = await get_preliminary_winner()
+
+    if not winner: return
+
+    # Проверка на дубликаты публикации
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT value FROM settings WHERE key = 'results_published'") as c:
+            if await c.fetchone(): return
+        await db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('results_published', '1')", ())
+        await db.commit()
+
+    stats = await get_final_stats()
+
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT username, full_name FROM users WHERE user_id = ?", (winner[1],)) as c:
             u = await c.fetchone()
-            username = u[0] if u[0] else u[1]
+            username = "@" + u[0] if u[0] else u[1]
 
-        # Генерация 6-значного кода
         win_code = "".join([str(random.randint(0,9)) for _ in range(6)])
         await db.execute("INSERT OR REPLACE INTO winners (user_id, ticket_number, code) VALUES (?, ?, ?)",
                          (winner[1], winner[0], win_code))
         await db.commit()
 
-    # Форматирование времени победителя (ММ:СС)
     minutes = int(winner[3] // 60)
     seconds = int(winner[3] % 60)
     time_str = f"{minutes:02d}:{seconds:02d}"
 
+    y = stats['total_finalist_tickets']
+    x = stats['registered_tickets']
+    z = y - x
+    k = stats['finished_tickets']
+    l = x - k
+
     public_text = (
-        "🏆 <b>Победитель конкурса определён!</b>\n\n"
-        f"@{u[0]} (заявка №{winner[0]:05d})\n"
-        f"Результат: {winner[2]}/8 за {time_str}\n\n"
-        "Поздравляем победителя!\n\n"
+        "🎉 <b>Финал завершён!</b>\n\n"
+        f"Всего финалистских заявок: {y}\n"
+        f"Зарегистрировалось (нажали кнопку): {x}\n"
+        f"Не зарегистрировалось (не нажали до 19:30): {z}\n"
+        f"Успешно прошли финал (полностью или частично): {k}\n"
+        f"Не завершили прохождение (не уложились в 21:00): {l}\n\n"
+        "🏆 <b>Победитель конкурса определён!</b>\n"
+        f"Победитель: {username} (заявка №{winner[0]:05d})\n"
+        f"Результат: {winner[2]}/8, время {time_str}\n"
+        f"Приз: iPhone 17 PRO 256 Гб\n\n"
+        "Поздравляем победителя!\n"
         "Приз (iPhone 17 PRO 256 Гб) будет вручён только после подтверждения секретного кода. "
         "Код отправлен победителю в личные сообщения."
     )
 
-    # В канал
-    try: await callback.bot.send_message(CHANNEL_ID, public_text, parse_mode="HTML")
+    try: await bot.send_message(CHANNEL_ID, public_text, parse_mode="HTML")
     except: pass
 
-    # Рассылка всем пользователям
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT user_id FROM users") as cursor:
             all_users = await cursor.fetchall()
             for (uid,) in all_users:
                 try:
-                    await callback.bot.send_message(uid, public_text, parse_mode="HTML")
-                    await asyncio.sleep(0.05) # Rate limiting
+                    from keyboards.menu import get_main_menu_keyboard
+                    kb, _ = await get_main_menu_keyboard(uid)
+                    await bot.send_message(uid, public_text, parse_mode="HTML", reply_markup=kb)
+                    await asyncio.sleep(0.05)
                 except: pass
 
-    # Победителю
     win_msg = (
-        "🎊 <b>ПОЗДРАВЛЯЕМ! Вы стали победителем конкурса!</b>\n\n"
         "Ваш приз: <b>iPhone 17 PRO 256 Гб</b>\n\n"
         f"🔑 Ваш секретный код: <code>{win_code}</code>\n\n"
         "⚠️ <b>Важная информация:</b>\n"
         "• Никому не сообщайте этот код. Даже если кто-то пишет вам от имени организатора.\n"
-        "• Для получения приза напишите организатору в личные сообщения @mozgo_boy_admin или на почту alexandr@cbda.ru\n"
-        "• Обязательно укажите свой секретный код: " + win_code + "\n\n"
-        "Код предназначен только для вас и будет проверен организатором лично."
+        "• Для получения приза напишите организатору на почту alexandr@cbda.ru\n"
+        f"Обязательно укажите свой секретный код: {win_code}"
     )
-    try: await callback.bot.send_message(winner[1], win_msg, parse_mode="HTML")
+    try: await bot.send_message(winner[1], win_msg, parse_mode="HTML")
     except: pass
 
-    # Админу
     from utils.time_utils import get_moscow_now
     gen_date = get_moscow_now().strftime("%d.%m.%Y %H:%M")
     admin_msg = (
-        f"Победитель: @{u[0]}\n"
+        f"Победитель: {username}\n"
         f"Заявка №{winner[0]:05d}\n"
         f"Результат: {winner[2]}/8 | Время: {time_str}\n"
         f"Секретный код: {win_code}\n"
         f"Дата генерации: {gen_date}"
     )
-    await callback.message.answer(f"✅ <b>Результаты опубликованы!</b>\n\n{admin_msg}", parse_mode="HTML")
+    try: await bot.send_message(OWNER_ID, f"✅ <b>Результаты опубликованы!</b>\n\n{admin_msg}", parse_mode="HTML")
+    except: pass
+
+@router.callback_query(F.data == "admin_publish_results")
+async def admin_publish_results_handler(callback: CallbackQuery):
+    if callback.from_user.id != OWNER_ID: return
+    await publish_final_results(callback.bot)
     await callback.answer()
 
 @router.message(F.text == "🏆 Победитель")

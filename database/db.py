@@ -319,25 +319,27 @@ async def check_and_trigger_closure(bot: Bot):
     if paid_total >= TICKET_LIMIT and not await is_collection_closed():
         await close_collection()
 
-        # Рассылка финалистам (в фоне)
+        # Рассылка ВСЕМ пользователям (в фоне)
         from database.db_final import get_final_times
         times = await get_final_times()
         if times:
-            async def broadcast_closure():
+            async def broadcast_closure_to_all():
                 from keyboards.menu import get_main_menu_keyboard
-                reg_time_str = times["reg_start"].strftime("%H:%M")
-                push_text = f"🔥 Отборочный этап завершен: начало регистрации на Финал в {reg_time_str} МСК.\n\nДо финала: <b>--:--:--</b>"
+                push_text = "📢 <b>Приём заявок завершён</b>\n⏳ До Финала: <b>--:--:--</b>"
 
-                finalists = await get_all_finalists()
-                for fid in finalists:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute("SELECT user_id FROM users") as cursor:
+                        all_users = await cursor.fetchall()
+
+                for (uid,) in all_users:
                     try:
-                        kb, _ = await get_main_menu_keyboard(fid)
-                        await bot.send_message(fid, push_text, parse_mode="HTML", reply_markup=kb)
+                        kb, _ = await get_main_menu_keyboard(uid)
+                        await bot.send_message(uid, push_text, parse_mode="HTML", reply_markup=kb)
                         await asyncio.sleep(0.05) # Rate limiting
                     except:
                         pass
             import asyncio
-            asyncio.create_task(broadcast_closure())
+            asyncio.create_task(broadcast_closure_to_all())
 
         try:
             text = (
