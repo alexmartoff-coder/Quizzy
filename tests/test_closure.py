@@ -3,16 +3,18 @@ import unittest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime
 from database.db import check_and_trigger_closure
-from config import TICKET_LIMIT
+from config import TICKET_LIMIT, INITIAL_FAKE_TICKETS, CONTEST_DEADLINE
 
 class TestClosure(unittest.IsolatedAsyncioTestCase):
-    @patch('database.db.get_paid_tickets_count')
+    @patch('database.db.get_total_tickets_count')
     @patch('database.db.is_collection_closed')
     @patch('database.db.close_collection')
-    async def test_closure_by_tickets(self, mock_close, mock_is_closed, mock_count):
-        # Setup: TICKET_LIMIT tickets, not closed
-        mock_count.return_value = TICKET_LIMIT
+    @patch('database.db.get_moscow_now')
+    async def test_closure_by_tickets(self, mock_now, mock_close, mock_is_closed, mock_count):
+        # Setup: Real tickets + fake tickets >= TICKET_LIMIT
+        mock_count.return_value = TICKET_LIMIT - INITIAL_FAKE_TICKETS
         mock_is_closed.return_value = False
+        mock_now.return_value = datetime(2025, 1, 1) # Well before deadline
 
         bot = AsyncMock()
 
@@ -21,31 +23,36 @@ class TestClosure(unittest.IsolatedAsyncioTestCase):
         mock_close.assert_called_once()
         bot.send_message.assert_called_once()
         args, kwargs = bot.send_message.call_args
-        self.assertIn("СБОР ЗАЯВОК ЗАВЕРШЁН", kwargs['text'])
+        self.assertIn("СБОР БИЛЕТОВ ЗАВЕРШЁН", kwargs['text'])
 
-    @patch('database.db.get_paid_tickets_count')
+    @patch('database.db.get_total_tickets_count')
     @patch('database.db.is_collection_closed')
     @patch('database.db.close_collection')
-    async def test_no_closure(self, mock_close, mock_is_closed, mock_count):
-        # Setup: less than TICKET_LIMIT tickets (including fake ones), not closed
-        from config import INITIAL_FAKE_TICKETS
-        mock_count.return_value = TICKET_LIMIT - INITIAL_FAKE_TICKETS - 1
+    @patch('database.db.get_moscow_now')
+    async def test_closure_by_deadline(self, mock_now, mock_close, mock_is_closed, mock_count):
+        # Setup: Real tickets + fake tickets < TICKET_LIMIT, but deadline passed
+        mock_count.return_value = 0
         mock_is_closed.return_value = False
+        mock_now.return_value = datetime(2026, 4, 11) # After deadline (2026-04-10)
 
         bot = AsyncMock()
 
         await check_and_trigger_closure(bot)
 
-        mock_close.assert_not_called()
-        bot.send_message.assert_not_called()
+        mock_close.assert_called_once()
+        bot.send_message.assert_called_once()
+        args, kwargs = bot.send_message.call_args
+        self.assertIn("СБОР БИЛЕТОВ ЗАВЕРШЁН", kwargs['text'])
 
-    @patch('database.db.get_paid_tickets_count')
+    @patch('database.db.get_total_tickets_count')
     @patch('database.db.is_collection_closed')
     @patch('database.db.close_collection')
-    async def test_already_closed(self, mock_close, mock_is_closed, mock_count):
-        # Setup: TICKET_LIMIT tickets, already closed
-        mock_count.return_value = TICKET_LIMIT
-        mock_is_closed.return_value = True
+    @patch('database.db.get_moscow_now')
+    async def test_no_closure(self, mock_now, mock_close, mock_is_closed, mock_count):
+        # Setup: Not enough tickets and before deadline
+        mock_count.return_value = TICKET_LIMIT - INITIAL_FAKE_TICKETS - 1
+        mock_is_closed.return_value = False
+        mock_now.return_value = datetime(2025, 1, 1)
 
         bot = AsyncMock()
 

@@ -19,9 +19,9 @@ async def main():
     from utils.state_helper import set_dp
     set_dp(dp)
 
-    # Запуск планировщика задач
-    from handlers.final_quiz import start_schedulers
-    asyncio.create_task(start_schedulers(bot))
+    # Запуск планировщика задач (отключено для новой механики розыгрыша)
+    # from handlers.final_quiz import start_schedulers
+    # asyncio.create_task(start_schedulers(bot))
 
     # Регистрируем роутеры
     dp.include_router(payment.payment_router)
