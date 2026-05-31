@@ -3,6 +3,7 @@ from database.db import (
     has_user_used_free_attempt, get_user_applications, issue_ticket, set_quiz_session,
     has_accepted_rules, mark_rules_accepted
 )
+import aiosqlite
 from keyboards.menu import get_main_menu_keyboard, get_start_quiz_keyboard, get_rules_agreement_keyboard
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
@@ -108,7 +109,8 @@ async def cmd_enter_final(message: Message):
     await register_for_final(user_id)
 
     # Инициализация сессии финала
-    async with aiosqlite.connect("bot_database.db") as db:
+    from database.db import DB_PATH
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("INSERT OR REPLACE INTO final_sessions (user_id, current_ticket_index, is_active) VALUES (?, 0, 1)", (user_id,))
         await db.commit()
 
@@ -170,8 +172,9 @@ async def cmd_my_tickets(message: Message):
 @router.message(F.text == "📊 Лидерборд")
 @router.message(F.text == "📊 Лидерборд финалистов")
 async def cmd_leaderboard(message: Message):
+    from database.db import DB_PATH
     # Проверка, завершен ли розыгрыш
-    async with aiosqlite.connect("bot_database.db") as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT ticket_number, user_id, score, total_time FROM final_results WHERE is_mini_quiz = (SELECT MAX(is_mini_quiz) FROM final_results) ORDER BY score DESC, total_time ASC LIMIT 1") as cursor:
             winner = await cursor.fetchone()
         async with db.execute("SELECT value FROM settings WHERE key = 'results_published'") as cursor:
@@ -214,8 +217,9 @@ async def cmd_support(message: Message):
 
 @router.message(F.text == "🔄 Обновить данные")
 async def cmd_refresh(message: Message):
+    from database.db import DB_PATH
     # Проверка, завершен ли розыгрыш
-    async with aiosqlite.connect("bot_database.db") as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT ticket_number, user_id, score, total_time FROM final_results WHERE is_mini_quiz = (SELECT MAX(is_mini_quiz) FROM final_results) ORDER BY score DESC, total_time ASC LIMIT 1") as cursor:
             winner = await cursor.fetchone()
         async with db.execute("SELECT value FROM settings WHERE key = 'results_published'") as cursor:

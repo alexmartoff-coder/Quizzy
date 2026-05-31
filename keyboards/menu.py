@@ -56,7 +56,8 @@ async def get_main_menu_keyboard(user_id: int = None):
 
         # Проверяем наличие билетов, ожидающих квиза
         if user_id:
-            async with aiosqlite.connect("bot_database.db") as db:
+            from database.db import DB_PATH
+            async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute("SELECT COUNT(*) FROM tickets WHERE user_id = ? AND status = 'pending'", (user_id,)) as c:
                     row = await c.fetchone()
                     pending_count = row[0] if row else 0
@@ -76,7 +77,8 @@ async def get_main_menu_keyboard(user_id: int = None):
 
         # Личный прогресс
         finalist_tickets = await get_user_finalist_tickets(user_id)
-        async with aiosqlite.connect("bot_database.db") as db:
+        from database.db import DB_PATH
+        async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute("SELECT COUNT(*) FROM final_results WHERE user_id = ? AND is_mini_quiz = 0", (user_id,)) as c:
                 row = await c.fetchone()
                 done_count = row[0] if row else 0

@@ -99,7 +99,8 @@ async def quiz_timer_logic(bot: Bot, state: FSMContext, user_id: int, q_idx: int
 @router.message(F.text.contains("🚀 Пройти квиз"))
 async def cmd_resume_pending_quiz(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    async with aiosqlite.connect("bot_database.db") as db:
+    from database.db import DB_PATH
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT ticket_number FROM tickets WHERE user_id = ? AND status = 'pending' LIMIT 1", (user_id,)) as c:
             row = await c.fetchone()
             if row:
@@ -191,7 +192,8 @@ async def finish_quiz_logic(bot: Bot, state: FSMContext, user_id: int):
     score = session[0] if session else 0
     t_num = session[3] if session else None
 
-    async with aiosqlite.connect("bot_database.db") as db:
+    from database.db import DB_PATH
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT type FROM tickets WHERE ticket_number = ?", (t_num,)) as cursor:
             row = await cursor.fetchone()
             t_type = row[0] if row else "base"
