@@ -26,7 +26,7 @@ async def main():
     # Регистрируем роутеры
     dp.include_router(payment.payment_router)
     dp.include_router(admin.router)
-    dp.include_router(final_quiz.router)
+    # dp.include_router(final_quiz.router) # Disabled for the new flow
     dp.include_router(base.router)
     dp.include_router(quiz.router)
 
